@@ -9,10 +9,30 @@ type When struct {
 	Condition func(interface{}) bool
 	Then      ValidationRule
 	Else      ValidationRule
+	parent    interface{}
+}
+
+func (w *When) SetParent(parent interface{}) {
+	w.parent = parent
+	// Also set parent for Then and Else rules if they implement SetParent
+	if w.Then != nil {
+		if setter, ok := w.Then.(interface{ SetParent(interface{}) }); ok {
+			setter.SetParent(parent)
+		}
+	}
+	if w.Else != nil {
+		if setter, ok := w.Else.(interface{ SetParent(interface{}) }); ok {
+			setter.SetParent(parent)
+		}
+	}
 }
 
 func (w When) Validate(value interface{}) error {
-	if w.Condition(value) {
+	if w.parent == nil {
+		return fmt.Errorf("parent not set")
+	}
+	
+	if w.Condition(w.parent) {
 		if w.Then != nil {
 			return w.Then.Validate(value)
 		}
@@ -24,36 +44,24 @@ func (w When) Validate(value interface{}) error {
 
 type CrossField struct {
 	Field      string
-	Parent     interface{}
-	ValidateFn func(value, crossValue interface{}) error
+	ValidateFn func(parent, value interface{}) error
+	parent     interface{}
 }
 
 func (c *CrossField) SetParent(parent interface{}) {
-	c.Parent = parent
+	c.parent = parent
 }
 
-func (c CrossField) Validate(fieldValue interface{}) error {
+func (c CrossField) Validate(value interface{}) error {
 	if c.ValidateFn == nil {
 		return fmt.Errorf("validation function not provided")
 	}
 
-	// Get the parent value
-	parentVal := reflect.ValueOf(c.Parent)
-	if parentVal.Kind() == reflect.Ptr {
-		parentVal = parentVal.Elem()
+	if c.parent == nil {
+		return fmt.Errorf("parent not set")
 	}
 
-	if parentVal.Kind() != reflect.Struct {
-		return fmt.Errorf("parent must be a struct")
-	}
-
-	// Get the cross-field value
-	crossField := parentVal.FieldByName(c.Field)
-	if !crossField.IsValid() {
-		return fmt.Errorf("field %s not found", c.Field)
-	}
-
-	return c.ValidateFn(fieldValue, crossField.Interface())
+	return c.ValidateFn(c.parent, value)
 }
 
 type DependentRequired struct {

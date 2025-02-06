@@ -57,20 +57,11 @@ func (v *Validator) validateValue(field string, value reflect.Value, parent inte
 	// Apply all rules
 	for _, rule := range rules {
 		// For all validations, pass the field value and update parent if needed
-		if cf, ok := rule.(interface{ Validate(interface{}) error }); ok {
-			if crossField, ok := cf.(interface{ SetParent(interface{}) }); ok {
-				crossField.SetParent(parent)
-			}
-			if err := cf.Validate(value.Interface()); err != nil {
-				errors = append(errors, ValidationError{
-					Field:   field,
-					Message: err.Error(),
-				})
-			}
-			continue
+		if rule, ok := rule.(interface{ SetParent(interface{}) }); ok {
+			rule.SetParent(parent)
 		}
 
-		// For other validations, pass the field value
+		// For all validations, pass the field value
 		if err := rule.Validate(value.Interface()); err != nil {
 			errors = append(errors, ValidationError{
 				Field:   field,

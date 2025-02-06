@@ -52,8 +52,7 @@ func TestValidator(t *testing.T) {
 			user: testdata.TestUser{
 				Username: "johndoe",
 				Age:      25,
-				Emaiyes continue, and after you finished, write tests and test it
-				l:    "invalid-email",
+				Email:    "invalid-email",
 			},
 			wantErr: true,
 		},

@@ -84,7 +84,7 @@ func TestConditionalValidation(t *testing.T) {
 	v := New()
 
 	// Add conditional validation
-	v.AddRule("PremiumDetails", rules.When{
+	v.AddRule("PremiumDetails", &rules.When{
 		Condition: func(value interface{}) bool {
 			user, ok := value.(*testdata.User)
 			return ok && user.Premium
@@ -93,20 +93,21 @@ func TestConditionalValidation(t *testing.T) {
 	})
 
 	// Add cross-field validation
-	v.AddRule("ConfirmPassword", rules.CrossField{
-		Field:  "Password",
-		Parent: &testdata.User{},
-		ValidateFn: func(value, crossValue interface{}) error {
-			user, ok := value.(*testdata.User)
+	crossFieldRule := &rules.CrossField{
+		Field: "Password",
+		ValidateFn: func(parent, value interface{}) error {
+			user, ok := parent.(*testdata.User)
 			if !ok {
-				return fmt.Errorf("expected *testdata.User, got %T", value)
+				return fmt.Errorf("expected *testdata.User, got %T", parent)
 			}
 			if user.ConfirmPassword != user.Password {
 				return fmt.Errorf("passwords do not match")
 			}
 			return nil
 		},
-	})
+	}
+	crossFieldRule.SetParent(&testdata.User{})
+	v.AddRule("ConfirmPassword", crossFieldRule)
 
 	tests := []struct {
 		name    string
