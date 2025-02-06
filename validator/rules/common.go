@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"reflect"
+	"regexp"
 	"time"
 )
 
@@ -89,4 +90,103 @@ type Custom struct {
 
 func (c Custom) Validate(value interface{}) error {
 	return c.Fn(value)
+}
+
+// Phone validates phone numbers
+type Phone struct {
+	AllowEmpty bool
+}
+
+func (p Phone) Validate(value interface{}) error {
+	str, ok := value.(string)
+	if !ok {
+		return fmt.Errorf("expected string, got %T", value)
+	}
+
+	if str == "" && p.AllowEmpty {
+		return nil
+	}
+
+	// Basic phone validation: +1234567890 or 1234567890
+	matched, _ := regexp.MatchString(`^\+?\d{10,15}$`, str)
+	if !matched {
+		return fmt.Errorf("invalid phone number format")
+	}
+	return nil
+}
+
+// UUID validates UUID strings
+type UUID struct{}
+
+func (u UUID) Validate(value interface{}) error {
+	str, ok := value.(string)
+	if !ok {
+		return fmt.Errorf("expected string, got %T", value)
+	}
+
+	matched, _ := regexp.MatchString(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`, str)
+	if !matched {
+		return fmt.Errorf("invalid UUID format")
+	}
+	return nil
+}
+
+// Date validates date strings
+type Date struct {
+	Format     string
+	Min        time.Time
+	Max        time.Time
+	AllowEmpty bool
+}
+
+func (d Date) Validate(value interface{}) error {
+	str, ok := value.(string)
+	if !ok {
+		return fmt.Errorf("expected string, got %T", value)
+	}
+
+	if str == "" && d.AllowEmpty {
+		return nil
+	}
+
+	t, err := time.Parse(d.Format, str)
+	if err != nil {
+		return fmt.Errorf("invalid date format: %v", err)
+	}
+
+	if !d.Min.IsZero() && t.Before(d.Min) {
+		return fmt.Errorf("date must not be before %v", d.Min.Format(d.Format))
+	}
+
+	if !d.Max.IsZero() && t.After(d.Max) {
+		return fmt.Errorf("date must not be after %v", d.Max.Format(d.Format))
+	}
+
+	return nil
+}
+
+// Required validates that a value is not empty
+type Required struct{}
+
+func (r Required) Validate(value interface{}) error {
+	if value == nil {
+		return fmt.Errorf("value is required")
+	}
+
+	v := reflect.ValueOf(value)
+	switch v.Kind() {
+	case reflect.String:
+		if v.String() == "" {
+			return fmt.Errorf("value is required")
+		}
+	case reflect.Slice, reflect.Map:
+		if v.Len() == 0 {
+			return fmt.Errorf("value is required")
+		}
+	case reflect.Ptr:
+		if v.IsNil() {
+			return fmt.Errorf("value is required")
+		}
+	}
+	return nil
 }
