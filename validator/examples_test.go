@@ -284,3 +284,124 @@ func Example_advancedValidation() {
 	// - PremiumUntil: date must not be before 2025-02-06
 	// - ContactMethod: value must be one of: [email phone both]
 }
+
+func Example_advancedValidationRules() {
+	// Create a struct to validate
+	type Server struct {
+		IPAddress  string
+		Domain     string
+		Password   string
+		BackupCard string
+	}
+
+	// Create a new validator
+	v := New()
+
+	// Add IP validation
+	v.AddRule("IPAddress", rules.IP{
+		AllowV4: true,
+		AllowV6: true,
+	})
+
+	// Add domain validation
+	v.AddRule("Domain", rules.Domain{
+		AllowSubdomains: true,
+	})
+
+	// Add password validation
+	v.AddRule("Password", rules.Password{
+		MinLength:      12,
+		MaxLength:      50,
+		RequireUpper:   true,
+		RequireLower:   true,
+		RequireDigit:   true,
+		RequireSpecial: true,
+	})
+
+	// Add credit card validation
+	v.AddRule("BackupCard", rules.CreditCard{
+		AllowEmpty: true,
+	})
+
+	// Validate a valid server
+	validServer := &Server{
+		IPAddress:  "192.168.1.1",
+		Domain:     "example.com",
+		Password:   "SecurePass123!@#",
+		BackupCard: "4111111111111111",
+	}
+
+	if err := v.Validate(validServer); err != nil {
+		fmt.Printf("Validation error: %v\n", err)
+	} else {
+		fmt.Println("Valid server")
+	}
+
+	// Validate an invalid server
+	invalidServer := &Server{
+		IPAddress:  "invalid-ip",
+		Domain:     "invalid..domain",
+		Password:   "weak",
+		BackupCard: "1234-5678-9012-3456",
+	}
+
+	if err := v.Validate(invalidServer); err != nil {
+		fmt.Println("Invalid server with errors:")
+		for _, e := range err.(ValidationErrors) {
+			fmt.Printf("- %s: %s\n", e.Field, e.Message)
+		}
+	}
+
+	// Output:
+	// Valid server
+	// Invalid server with errors:
+	// - IPAddress: invalid IP address format
+	// - Domain: invalid domain name format
+	// - Password: password must be at least 12 characters
+	// - BackupCard: invalid credit card number format
+}
+
+func Example_networkAndFormatValidation() {
+	type NetworkConfig struct {
+		Network     string `validate:"cidr"`
+		DeviceMAC   string `validate:"mac"`
+		Location    string `validate:"latlong"`
+		ThemeColor  string `validate:"color"`
+	}
+
+	v := New()
+	v.AddRule("cidr", rules.CIDR{})
+	v.AddRule("mac", rules.MAC{})
+	v.AddRule("latlong", rules.LatLong{})
+	v.AddRule("color", rules.Color{AllowHEX: true, AllowRGB: true})
+
+	// Valid configuration
+	validConfig := &NetworkConfig{
+		Network:     "192.168.1.0/24",
+		DeviceMAC:   "00:11:22:33:44:55",
+		Location:    "40.7128,-74.0060",
+		ThemeColor:  "#ff0000",
+	}
+
+	if err := v.Validate(validConfig); err != nil {
+		fmt.Printf("Validation error: %v\n", err)
+		return
+	}
+	fmt.Println("Valid configuration")
+
+	// Invalid configuration
+	invalidConfig := &NetworkConfig{
+		Network:     "192.168.1.0", // Missing subnet mask
+		DeviceMAC:   "00:11:22:33", // Invalid MAC address
+		Location:    "91.0000,0.0000", // Invalid latitude
+		ThemeColor:  "red", // Invalid color format
+	}
+
+	if err := v.Validate(invalidConfig); err != nil {
+		fmt.Printf("Validation errors:\n%v\n", err)
+		return
+	}
+
+	// Output:
+	// Valid configuration
+}
