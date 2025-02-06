@@ -351,3 +351,210 @@ func (c Color) Validate(value interface{}) error {
 
 	return fmt.Errorf("invalid color format")
 }
+
+// EmailDNS validates email addresses and optionally checks DNS records
+type EmailDNS struct {
+	// CheckDNS enables MX record validation
+	CheckDNS bool
+	// AllowEmpty allows empty values
+	AllowEmpty bool
+}
+
+func (e EmailDNS) Validate(value interface{}) error {
+	str, ok := value.(string)
+	if !ok {
+		return fmt.Errorf("value must be a string")
+	}
+
+	if str == "" {
+		if e.AllowEmpty {
+			return nil
+		}
+		return fmt.Errorf("value is required")
+	}
+
+	// Basic email format validation
+	emailRegex := regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
+	if !emailRegex.MatchString(str) {
+		return fmt.Errorf("invalid email format")
+	}
+
+	if e.CheckDNS {
+		parts := strings.Split(str, "@")
+		if len(parts) != 2 {
+			return fmt.Errorf("invalid email format")
+		}
+
+		_, err := net.LookupMX(parts[1])
+		if err != nil {
+			return fmt.Errorf("domain does not have valid MX records")
+		}
+	}
+
+	return nil
+}
+
+// Hostname validates hostnames according to RFC 1123
+type Hostname struct {
+	// AllowWildcard allows wildcard in hostname (e.g., *.example.com)
+	AllowWildcard bool
+	// AllowEmpty allows empty values
+	AllowEmpty bool
+}
+
+func (h Hostname) Validate(value interface{}) error {
+	str, ok := value.(string)
+	if !ok {
+		return fmt.Errorf("value must be a string")
+	}
+
+	if str == "" {
+		if h.AllowEmpty {
+			return nil
+		}
+		return fmt.Errorf("value is required")
+	}
+
+	if h.AllowWildcard && strings.HasPrefix(str, "*.") {
+		str = "host" + str[1:]
+	}
+
+	// RFC 1123 hostname validation
+	if len(str) > 255 {
+		return fmt.Errorf("hostname too long")
+	}
+
+	hostnameRegex := regexp.MustCompile(`^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$`)
+	if !hostnameRegex.MatchString(str) {
+		return fmt.Errorf("invalid hostname format")
+	}
+
+	return nil
+}
+
+// Port validates port numbers
+type Port struct {
+	// Min is the minimum allowed port number (default: 1)
+	Min int
+	// Max is the maximum allowed port number (default: 65535)
+	Max int
+	// AllowPrivileged allows ports below 1024
+	AllowPrivileged bool
+	// AllowEmpty allows empty values
+	AllowEmpty bool
+}
+
+func (p Port) Validate(value interface{}) error {
+	if p.Min == 0 {
+		p.Min = 1
+	}
+	if p.Max == 0 {
+		p.Max = 65535
+	}
+	if !p.AllowPrivileged && p.Min < 1024 {
+		p.Min = 1024
+	}
+
+	// Handle string input
+	if str, ok := value.(string); ok {
+		if str == "" {
+			if p.AllowEmpty {
+				return nil
+			}
+			return fmt.Errorf("value is required")
+		}
+		port, err := strconv.Atoi(str)
+		if err != nil {
+			return fmt.Errorf("invalid port number")
+		}
+		value = port
+	}
+
+	// Handle numeric input
+	port, ok := value.(int)
+	if !ok {
+		return fmt.Errorf("value must be a string or integer")
+	}
+
+	if port < p.Min || port > p.Max {
+		return fmt.Errorf("port must be between %d and %d", p.Min, p.Max)
+	}
+
+	return nil
+}
+
+// SemVer validates semantic version strings
+type SemVer struct {
+	// AllowPrefix allows 'v' prefix (e.g., v1.0.0)
+	AllowPrefix bool
+	// RequirePrefix requires 'v' prefix when AllowPrefix is true
+	RequirePrefix bool
+	// AllowPrerelease allows prerelease versions (e.g., 1.0.0-alpha)
+	AllowPrerelease bool
+	// AllowBuild allows build metadata (e.g., 1.0.0+001)
+	AllowBuild bool
+	// AllowEmpty allows empty values
+	AllowEmpty bool
+}
+
+func (s SemVer) Validate(value interface{}) error {
+	str, ok := value.(string)
+	if !ok {
+		return fmt.Errorf("value must be a string")
+	}
+
+	if str == "" {
+		if s.AllowEmpty {
+			return nil
+		}
+		return fmt.Errorf("value is required")
+	}
+
+	// Handle v prefix
+	if strings.HasPrefix(str, "v") {
+		if !s.AllowPrefix {
+			return fmt.Errorf("v prefix not allowed")
+		}
+		str = str[1:]
+	} else if s.RequirePrefix && s.AllowPrefix {
+		return fmt.Errorf("v prefix is required")
+	}
+
+	// Split version into parts
+	parts := strings.SplitN(str, "+", 2)
+	versionParts := strings.SplitN(parts[0], "-", 2)
+
+	// Validate core version (X.Y.Z)
+	core := strings.Split(versionParts[0], ".")
+	if len(core) != 3 {
+		return fmt.Errorf("version must be in format X.Y.Z")
+	}
+
+	for _, num := range core {
+		if !regexp.MustCompile(`^\d+$`).MatchString(num) {
+			return fmt.Errorf("version components must be numeric")
+		}
+	}
+
+	// Validate prerelease
+	if len(versionParts) > 1 {
+		if !s.AllowPrerelease {
+			return fmt.Errorf("prerelease versions not allowed")
+		}
+		if !regexp.MustCompile(`^[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*$`).MatchString(versionParts[1]) {
+			return fmt.Errorf("invalid prerelease format")
+		}
+	}
+
+	// Validate build metadata
+	if len(parts) > 1 {
+		if !s.AllowBuild {
+			return fmt.Errorf("build metadata not allowed")
+		}
+		if !regexp.MustCompile(`^[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*$`).MatchString(parts[1]) {
+			return fmt.Errorf("invalid build metadata format")
+		}
+	}
+
+	return nil
+}

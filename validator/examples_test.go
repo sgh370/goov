@@ -256,13 +256,12 @@ func Example_advancedValidation() {
 
 	// Validate an invalid user
 	invalidUser := &User{
-		ID:            "invalid-uuid",
-		Name:          "",
-		Phone:         "invalid-phone",
-		Email:         "invalid-email",
-		DateOfBirth:   "2010-01-01", // Too young
+		ID:            "not-a-uuid",
+		Phone:         "not-a-phone",
+		Email:         "not-an-email",
+		DateOfBirth:   "2010-01-01",
 		Premium:       true,
-		PremiumUntil:  "2020-12-31", // Past date
+		PremiumUntil:  "2024-01-01",
 		ContactMethod: "invalid",
 	}
 
@@ -274,14 +273,14 @@ func Example_advancedValidation() {
 	}
 
 	// Output:
-	// Validation error: PremiumUntil: date must not be before 2025-02-06
+	// Validation error: PremiumUntil: date must not be before 2025-02-07
 	// Invalid user with errors:
 	// - ID: invalid UUID format
 	// - Name: value is required
 	// - Phone: invalid phone number format
 	// - Email: value does not match pattern ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$
-	// - DateOfBirth: date must not be after 2007-02-06
-	// - PremiumUntil: date must not be before 2025-02-06
+	// - DateOfBirth: date must not be after 2007-02-07
+	// - PremiumUntil: date must not be before 2025-02-07
 	// - ContactMethod: value must be one of: [email phone both]
 }
 
@@ -404,4 +403,54 @@ func Example_networkAndFormatValidation() {
 
 	// Output:
 	// Valid configuration
+}
+
+func Example_internetValidation() {
+	type ServerConfig struct {
+		Hostname    string `validate:"hostname{AllowWildcard: true}"`
+		Port        int    `validate:"port{AllowPrivileged: true}"`
+		AdminEmail  string `validate:"emaildns{CheckDNS: true}"`
+		Version     string `validate:"semver{AllowPrefix: true, AllowPrerelease: true}"`
+		SubnetCIDR  string `validate:"cidr"`
+		MACAddress  string `validate:"mac"`
+	}
+
+	// Register validation rules
+	v := New()
+	v.AddRule("Hostname", rules.Hostname{AllowWildcard: true})
+	v.AddRule("Port", rules.Port{AllowPrivileged: true})
+	v.AddRule("AdminEmail", rules.EmailDNS{CheckDNS: true})
+	v.AddRule("Version", rules.SemVer{AllowPrefix: true, AllowPrerelease: true})
+	v.AddRule("SubnetCIDR", rules.CIDR{})
+	v.AddRule("MACAddress", rules.MAC{})
+
+	config := ServerConfig{
+		Hostname:    "*.example.com",
+		Port:        443,
+		AdminEmail:  "admin@example.com",
+		Version:     "v1.2.3-beta.1",
+		SubnetCIDR:  "192.168.1.0/24",
+		MACAddress:  "00:1A:2B:3C:4D:5E",
+	}
+
+	err := v.Validate(config)
+	fmt.Printf("Validation error: %v\n", err)
+
+	// Invalid config
+	invalidConfig := ServerConfig{
+		Hostname:    "-invalid.com",
+		Port:        70000,
+		AdminEmail:  "not-an-email",
+		Version:     "1.2",
+		SubnetCIDR:  "300.168.1.0/24",
+		MACAddress:  "invalid-mac",
+	}
+
+	err = v.Validate(invalidConfig)
+	fmt.Printf("Validation errors:\n%v\n", err)
+
+	// Output:
+	// Validation error: AdminEmail: domain does not have valid MX records
+	// Validation errors:
+	// Hostname: invalid hostname format; Port: port must be between 1 and 65535; AdminEmail: invalid email format; Version: version must be in format X.Y.Z; SubnetCIDR: invalid CIDR format; MACAddress: invalid MAC address format
 }

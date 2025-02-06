@@ -33,9 +33,21 @@ func (e ValidationErrors) Error() string {
 }
 
 func New() *Validator {
-	return &Validator{
+	v := &Validator{
 		rules: make(map[string][]rules.ValidationRule),
 	}
+
+	// Register default rules
+	v.AddRule("required", rules.Required{})
+	v.AddRule("uuid", rules.UUID{})
+	v.AddRule("email", rules.EmailDNS{})
+	v.AddRule("hostname", rules.Hostname{})
+	v.AddRule("port", rules.Port{})
+	v.AddRule("semver", rules.SemVer{})
+	v.AddRule("cidr", rules.CIDR{})
+	v.AddRule("mac", rules.MAC{})
+
+	return v
 }
 
 func (v *Validator) AddRule(field string, rule rules.ValidationRule) {
