@@ -1,0 +1,1641 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>rules: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">goov/validator/rules/advanced.go (95.2%)</option>
+				
+				<option value="file1">goov/validator/rules/collection.go (100.0%)</option>
+				
+				<option value="file2">goov/validator/rules/common.go (100.0%)</option>
+				
+				<option value="file3">goov/validator/rules/conditional.go (59.8%)</option>
+				
+				<option value="file4">goov/validator/rules/numeric.go (91.2%)</option>
+				
+				<option value="file5">goov/validator/validator.go (75.9%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package rules
+
+import (
+        "fmt"
+        "net"
+        "regexp"
+        "strconv"
+        "strings"
+)
+
+// IP validates IP addresses (v4 or v6)
+type IP struct {
+        // AllowV4 allows IPv4 addresses
+        AllowV4 bool
+        // AllowV6 allows IPv6 addresses
+        AllowV6 bool
+        // AllowEmpty allows empty values
+        AllowEmpty bool
+}
+
+func (i IP) Validate(value interface{}) error <span class="cov8" title="1">{
+        str, ok := value.(string)
+        if !ok </span><span class="cov8" title="1">{
+                return fmt.Errorf("value must be a string")
+        }</span>
+
+        <span class="cov8" title="1">if str == "" </span><span class="cov8" title="1">{
+                if i.AllowEmpty </span><span class="cov8" title="1">{
+                        return nil
+                }</span>
+                <span class="cov8" title="1">return fmt.Errorf("value is required")</span>
+        }
+
+        <span class="cov8" title="1">ip := net.ParseIP(str)
+        if ip == nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("invalid IP address format")
+        }</span>
+
+        <span class="cov8" title="1">ipv4 := ip.To4() != nil
+        if ipv4 &amp;&amp; !i.AllowV4 </span><span class="cov8" title="1">{
+                return fmt.Errorf("IPv4 addresses are not allowed")
+        }</span>
+        <span class="cov8" title="1">if !ipv4 &amp;&amp; !i.AllowV6 </span><span class="cov8" title="1">{
+                return fmt.Errorf("IPv6 addresses are not allowed")
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// Domain validates domain names
+type Domain struct {
+        // AllowSubdomains allows subdomains (e.g., sub.example.com)
+        AllowSubdomains bool
+        // AllowEmpty allows empty values
+        AllowEmpty bool
+}
+
+func (d Domain) Validate(value interface{}) error <span class="cov8" title="1">{
+        str, ok := value.(string)
+        if !ok </span><span class="cov8" title="1">{
+                return fmt.Errorf("value must be a string")
+        }</span>
+
+        <span class="cov8" title="1">if str == "" </span><span class="cov8" title="1">{
+                if d.AllowEmpty </span><span class="cov8" title="1">{
+                        return nil
+                }</span>
+                <span class="cov8" title="1">return fmt.Errorf("value is required")</span>
+        }
+
+        // Domain name validation rules:
+        // 1. Length between 1 and 253 characters
+        // 2. Each label between 1 and 63 characters
+        // 3. Only alphanumeric characters and hyphens
+        // 4. Labels cannot start or end with hyphens
+        // 5. TLD cannot be all numeric
+
+        <span class="cov8" title="1">if len(str) &gt; 253 </span><span class="cov0" title="0">{
+                return fmt.Errorf("domain name too long")
+        }</span>
+
+        <span class="cov8" title="1">labels := strings.Split(str, ".")
+        if len(labels) &lt; 2 </span><span class="cov8" title="1">{
+                return fmt.Errorf("invalid domain name format")
+        }</span>
+
+        <span class="cov8" title="1">if !d.AllowSubdomains &amp;&amp; len(labels) &gt; 2 </span><span class="cov8" title="1">{
+                return fmt.Errorf("subdomains are not allowed")
+        }</span>
+
+        <span class="cov8" title="1">for i, label := range labels </span><span class="cov8" title="1">{
+                if len(label) == 0 </span><span class="cov0" title="0">{
+                        return fmt.Errorf("invalid domain name format")
+                }</span>
+                <span class="cov8" title="1">if len(label) &gt; 63 </span><span class="cov8" title="1">{
+                        return fmt.Errorf("domain name too long")
+                }</span>
+                <span class="cov8" title="1">if !regexp.MustCompile(`^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$`).MatchString(label) </span><span class="cov0" title="0">{
+                        return fmt.Errorf("invalid domain name format")
+                }</span>
+                <span class="cov8" title="1">if i == len(labels)-1 &amp;&amp; regexp.MustCompile(`^[0-9]+$`).MatchString(label) </span><span class="cov8" title="1">{
+                        return fmt.Errorf("TLD cannot be all numeric")
+                }</span>
+        }
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// Password validates password strength
+type Password struct {
+        // MinLength is the minimum length required
+        MinLength int
+        // MaxLength is the maximum length allowed
+        MaxLength int
+        // RequireUpper requires at least one uppercase letter
+        RequireUpper bool
+        // RequireLower requires at least one lowercase letter
+        RequireLower bool
+        // RequireDigit requires at least one digit
+        RequireDigit bool
+        // RequireSpecial requires at least one special character
+        RequireSpecial bool
+}
+
+func (p Password) Validate(value interface{}) error <span class="cov8" title="1">{
+        str, ok := value.(string)
+        if !ok </span><span class="cov8" title="1">{
+                return fmt.Errorf("value must be a string")
+        }</span>
+
+        <span class="cov8" title="1">if len(str) &lt; p.MinLength </span><span class="cov8" title="1">{
+                return fmt.Errorf("password must be at least %d characters", p.MinLength)
+        }</span>
+        <span class="cov8" title="1">if p.MaxLength &gt; 0 &amp;&amp; len(str) &gt; p.MaxLength </span><span class="cov8" title="1">{
+                return fmt.Errorf("password must not exceed %d characters", p.MaxLength)
+        }</span>
+
+        <span class="cov8" title="1">if p.RequireUpper &amp;&amp; !regexp.MustCompile(`[A-Z]`).MatchString(str) </span><span class="cov8" title="1">{
+                return fmt.Errorf("password must contain at least one uppercase letter")
+        }</span>
+        <span class="cov8" title="1">if p.RequireLower &amp;&amp; !regexp.MustCompile(`[a-z]`).MatchString(str) </span><span class="cov8" title="1">{
+                return fmt.Errorf("password must contain at least one lowercase letter")
+        }</span>
+        <span class="cov8" title="1">if p.RequireDigit &amp;&amp; !regexp.MustCompile(`[0-9]`).MatchString(str) </span><span class="cov8" title="1">{
+                return fmt.Errorf("password must contain at least one digit")
+        }</span>
+        <span class="cov8" title="1">if p.RequireSpecial &amp;&amp; !regexp.MustCompile(`[^a-zA-Z0-9]`).MatchString(str) </span><span class="cov8" title="1">{
+                return fmt.Errorf("password must contain at least one special character")
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// CreditCard validates credit card numbers using the Luhn algorithm
+type CreditCard struct {
+        // AllowEmpty allows empty values
+        AllowEmpty bool
+}
+
+func (c CreditCard) Validate(value interface{}) error <span class="cov8" title="1">{
+        str, ok := value.(string)
+        if !ok </span><span class="cov8" title="1">{
+                return fmt.Errorf("value must be a string")
+        }</span>
+
+        <span class="cov8" title="1">if str == "" </span><span class="cov8" title="1">{
+                if c.AllowEmpty </span><span class="cov8" title="1">{
+                        return nil
+                }</span>
+                <span class="cov8" title="1">return fmt.Errorf("value is required")</span>
+        }
+
+        // Remove spaces and hyphens
+        <span class="cov8" title="1">str = regexp.MustCompile(`[\s-]`).ReplaceAllString(str, "")
+
+        if !regexp.MustCompile(`^[0-9]{13,19}$`).MatchString(str) </span><span class="cov8" title="1">{
+                return fmt.Errorf("invalid credit card number format")
+        }</span>
+
+        // Luhn algorithm
+        <span class="cov8" title="1">var sum int
+        nDigits := len(str)
+        parity := nDigits % 2
+
+        for i := 0; i &lt; nDigits; i++ </span><span class="cov8" title="1">{
+                digit := int(str[i] - '0')
+                if i%2 == parity </span><span class="cov8" title="1">{
+                        digit *= 2
+                        if digit &gt; 9 </span><span class="cov8" title="1">{
+                                digit -= 9
+                        }</span>
+                }
+                <span class="cov8" title="1">sum += digit</span>
+        }
+
+        <span class="cov8" title="1">if sum%10 != 0 </span><span class="cov8" title="1">{
+                return fmt.Errorf("invalid credit card number format")
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// CIDR validates IPv4 CIDR notation
+type CIDR struct {
+        // AllowEmpty allows empty values
+        AllowEmpty bool
+}
+
+func (c CIDR) Validate(value interface{}) error <span class="cov8" title="1">{
+        str, ok := value.(string)
+        if !ok </span><span class="cov8" title="1">{
+                return fmt.Errorf("value must be a string")
+        }</span>
+
+        <span class="cov8" title="1">if str == "" </span><span class="cov8" title="1">{
+                if c.AllowEmpty </span><span class="cov8" title="1">{
+                        return nil
+                }</span>
+                <span class="cov8" title="1">return fmt.Errorf("value is required")</span>
+        }
+
+        <span class="cov8" title="1">_, _, err := net.ParseCIDR(str)
+        if err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("invalid CIDR format")
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// MAC validates MAC addresses
+type MAC struct {
+        // AllowEmpty allows empty values
+        AllowEmpty bool
+}
+
+func (m MAC) Validate(value interface{}) error <span class="cov8" title="1">{
+        str, ok := value.(string)
+        if !ok </span><span class="cov8" title="1">{
+                return fmt.Errorf("value must be a string")
+        }</span>
+
+        <span class="cov8" title="1">if str == "" </span><span class="cov8" title="1">{
+                if m.AllowEmpty </span><span class="cov8" title="1">{
+                        return nil
+                }</span>
+                <span class="cov8" title="1">return fmt.Errorf("value is required")</span>
+        }
+
+        // Remove colons and hyphens
+        <span class="cov8" title="1">str = regexp.MustCompile(`[:-]`).ReplaceAllString(str, "")
+
+        if !regexp.MustCompile(`^[0-9A-Fa-f]{12}$`).MatchString(str) </span><span class="cov8" title="1">{
+                return fmt.Errorf("invalid MAC address format")
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// LatLong validates latitude and longitude coordinates
+type LatLong struct {
+        // AllowEmpty allows empty values
+        AllowEmpty bool
+}
+
+func (l LatLong) Validate(value interface{}) error <span class="cov8" title="1">{
+        str, ok := value.(string)
+        if !ok </span><span class="cov8" title="1">{
+                return fmt.Errorf("value must be a string")
+        }</span>
+
+        <span class="cov8" title="1">if str == "" </span><span class="cov8" title="1">{
+                if l.AllowEmpty </span><span class="cov8" title="1">{
+                        return nil
+                }</span>
+                <span class="cov8" title="1">return fmt.Errorf("value is required")</span>
+        }
+
+        // Format: "latitude,longitude"
+        <span class="cov8" title="1">parts := strings.Split(str, ",")
+        if len(parts) != 2 </span><span class="cov8" title="1">{
+                return fmt.Errorf("invalid lat/long format, expected 'latitude,longitude'")
+        }</span>
+
+        <span class="cov8" title="1">lat, err := strconv.ParseFloat(strings.TrimSpace(parts[0]), 64)
+        if err != nil || lat &lt; -90 || lat &gt; 90 </span><span class="cov8" title="1">{
+                return fmt.Errorf("invalid latitude value")
+        }</span>
+
+        <span class="cov8" title="1">long, err := strconv.ParseFloat(strings.TrimSpace(parts[1]), 64)
+        if err != nil || long &lt; -180 || long &gt; 180 </span><span class="cov8" title="1">{
+                return fmt.Errorf("invalid longitude value")
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// Color validates color codes in various formats
+type Color struct {
+        // AllowHEX allows HEX color codes (#RRGGBB or #RGB)
+        AllowHEX bool
+        // AllowRGB allows RGB color codes (rgb(r,g,b))
+        AllowRGB bool
+        // AllowHSL allows HSL color codes (hsl(h,s%,l%))
+        AllowHSL bool
+        // AllowEmpty allows empty values
+        AllowEmpty bool
+}
+
+func (c Color) Validate(value interface{}) error <span class="cov8" title="1">{
+        str, ok := value.(string)
+        if !ok </span><span class="cov8" title="1">{
+                return fmt.Errorf("value must be a string")
+        }</span>
+
+        <span class="cov8" title="1">if str == "" </span><span class="cov8" title="1">{
+                if c.AllowEmpty </span><span class="cov8" title="1">{
+                        return nil
+                }</span>
+                <span class="cov8" title="1">return fmt.Errorf("value is required")</span>
+        }
+
+        <span class="cov8" title="1">str = strings.TrimSpace(strings.ToLower(str))
+
+        if c.AllowHEX </span><span class="cov8" title="1">{
+                if regexp.MustCompile(`^#([0-9a-f]{3}|[0-9a-f]{6})$`).MatchString(str) </span><span class="cov8" title="1">{
+                        return nil
+                }</span>
+        }
+
+        <span class="cov8" title="1">if c.AllowRGB </span><span class="cov8" title="1">{
+                if match := regexp.MustCompile(`^rgb\((\d{1,3}),\s*(\d{1,3}),\s*(\d{1,3})\)$`).FindStringSubmatch(str); match != nil </span><span class="cov8" title="1">{
+                        r, _ := strconv.Atoi(match[1])
+                        g, _ := strconv.Atoi(match[2])
+                        b, _ := strconv.Atoi(match[3])
+                        if r &gt;= 0 &amp;&amp; r &lt;= 255 &amp;&amp; g &gt;= 0 &amp;&amp; g &lt;= 255 &amp;&amp; b &gt;= 0 &amp;&amp; b &lt;= 255 </span><span class="cov8" title="1">{
+                                return nil
+                        }</span>
+                }
+        }
+
+        <span class="cov8" title="1">if c.AllowHSL </span><span class="cov8" title="1">{
+                if match := regexp.MustCompile(`^hsl\((\d{1,3}),\s*(\d{1,3})%,\s*(\d{1,3})%\)$`).FindStringSubmatch(str); match != nil </span><span class="cov8" title="1">{
+                        h, _ := strconv.Atoi(match[1])
+                        s, _ := strconv.Atoi(match[2])
+                        l, _ := strconv.Atoi(match[3])
+                        if h &gt;= 0 &amp;&amp; h &lt;= 360 &amp;&amp; s &gt;= 0 &amp;&amp; s &lt;= 100 &amp;&amp; l &gt;= 0 &amp;&amp; l &lt;= 100 </span><span class="cov8" title="1">{
+                                return nil
+                        }</span>
+                }
+        }
+
+        <span class="cov8" title="1">return fmt.Errorf("invalid color format")</span>
+}
+
+// EmailDNS validates email addresses and optionally checks DNS records
+type EmailDNS struct {
+        // CheckDNS enables MX record validation
+        CheckDNS bool
+        // AllowEmpty allows empty values
+        AllowEmpty bool
+}
+
+func (e EmailDNS) Validate(value interface{}) error <span class="cov8" title="1">{
+        str, ok := value.(string)
+        if !ok </span><span class="cov8" title="1">{
+                return fmt.Errorf("value must be a string")
+        }</span>
+
+        <span class="cov8" title="1">if str == "" </span><span class="cov8" title="1">{
+                if e.AllowEmpty </span><span class="cov8" title="1">{
+                        return nil
+                }</span>
+                <span class="cov8" title="1">return fmt.Errorf("value is required")</span>
+        }
+
+        // Basic email format validation
+        <span class="cov8" title="1">emailRegex := regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
+        if !emailRegex.MatchString(str) </span><span class="cov8" title="1">{
+                return fmt.Errorf("invalid email format")
+        }</span>
+
+        <span class="cov8" title="1">if e.CheckDNS </span><span class="cov0" title="0">{
+                parts := strings.Split(str, "@")
+                if len(parts) != 2 </span><span class="cov0" title="0">{
+                        return fmt.Errorf("invalid email format")
+                }</span>
+
+                <span class="cov0" title="0">_, err := net.LookupMX(parts[1])
+                if err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("domain does not have valid MX records")
+                }</span>
+        }
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// Hostname validates hostnames according to RFC 1123
+type Hostname struct {
+        // AllowWildcard allows wildcard in hostname (e.g., *.example.com)
+        AllowWildcard bool
+        // AllowEmpty allows empty values
+        AllowEmpty bool
+}
+
+func (h Hostname) Validate(value interface{}) error <span class="cov8" title="1">{
+        str, ok := value.(string)
+        if !ok </span><span class="cov8" title="1">{
+                return fmt.Errorf("value must be a string")
+        }</span>
+
+        <span class="cov8" title="1">if str == "" </span><span class="cov8" title="1">{
+                if h.AllowEmpty </span><span class="cov8" title="1">{
+                        return nil
+                }</span>
+                <span class="cov8" title="1">return fmt.Errorf("value is required")</span>
+        }
+
+        <span class="cov8" title="1">if h.AllowWildcard &amp;&amp; strings.HasPrefix(str, "*.") </span><span class="cov8" title="1">{
+                str = "host" + str[1:]
+        }</span>
+
+        // RFC 1123 hostname validation
+        <span class="cov8" title="1">if len(str) &gt; 255 </span><span class="cov8" title="1">{
+                return fmt.Errorf("hostname too long")
+        }</span>
+
+        <span class="cov8" title="1">hostnameRegex := regexp.MustCompile(`^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$`)
+        if !hostnameRegex.MatchString(str) </span><span class="cov8" title="1">{
+                return fmt.Errorf("invalid hostname format")
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// Port validates port numbers
+type Port struct {
+        // Min is the minimum allowed port number (default: 1)
+        Min int
+        // Max is the maximum allowed port number (default: 65535)
+        Max int
+        // AllowPrivileged allows ports below 1024
+        AllowPrivileged bool
+        // AllowEmpty allows empty values
+        AllowEmpty bool
+}
+
+func (p Port) Validate(value interface{}) error <span class="cov8" title="1">{
+        if p.Min == 0 </span><span class="cov8" title="1">{
+                p.Min = 1
+        }</span>
+        <span class="cov8" title="1">if p.Max == 0 </span><span class="cov8" title="1">{
+                p.Max = 65535
+        }</span>
+        <span class="cov8" title="1">if !p.AllowPrivileged &amp;&amp; p.Min &lt; 1024 </span><span class="cov8" title="1">{
+                p.Min = 1024
+        }</span>
+
+        // Handle string input
+        <span class="cov8" title="1">if str, ok := value.(string); ok </span><span class="cov8" title="1">{
+                if str == "" </span><span class="cov8" title="1">{
+                        if p.AllowEmpty </span><span class="cov8" title="1">{
+                                return nil
+                        }</span>
+                        <span class="cov8" title="1">return fmt.Errorf("value is required")</span>
+                }
+                <span class="cov8" title="1">port, err := strconv.Atoi(str)
+                if err != nil </span><span class="cov8" title="1">{
+                        return fmt.Errorf("invalid port number")
+                }</span>
+                <span class="cov8" title="1">value = port</span>
+        }
+
+        // Handle numeric input
+        <span class="cov8" title="1">port, ok := value.(int)
+        if !ok </span><span class="cov8" title="1">{
+                return fmt.Errorf("value must be a string or integer")
+        }</span>
+
+        <span class="cov8" title="1">if port &lt; p.Min || port &gt; p.Max </span><span class="cov8" title="1">{
+                return fmt.Errorf("port must be between %d and %d", p.Min, p.Max)
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// SemVer validates semantic version strings
+type SemVer struct {
+        // AllowPrefix allows 'v' prefix (e.g., v1.0.0)
+        AllowPrefix bool
+        // RequirePrefix requires 'v' prefix when AllowPrefix is true
+        RequirePrefix bool
+        // AllowPrerelease allows prerelease versions (e.g., 1.0.0-alpha)
+        AllowPrerelease bool
+        // AllowBuild allows build metadata (e.g., 1.0.0+001)
+        AllowBuild bool
+        // AllowEmpty allows empty values
+        AllowEmpty bool
+}
+
+func (s SemVer) Validate(value interface{}) error <span class="cov8" title="1">{
+        str, ok := value.(string)
+        if !ok </span><span class="cov8" title="1">{
+                return fmt.Errorf("value must be a string")
+        }</span>
+
+        <span class="cov8" title="1">if str == "" </span><span class="cov8" title="1">{
+                if s.AllowEmpty </span><span class="cov8" title="1">{
+                        return nil
+                }</span>
+                <span class="cov8" title="1">return fmt.Errorf("value is required")</span>
+        }
+
+        // Handle v prefix
+        <span class="cov8" title="1">if strings.HasPrefix(str, "v") </span><span class="cov8" title="1">{
+                if !s.AllowPrefix </span><span class="cov8" title="1">{
+                        return fmt.Errorf("v prefix not allowed")
+                }</span>
+                <span class="cov8" title="1">str = str[1:]</span>
+        } else<span class="cov8" title="1"> if s.RequirePrefix &amp;&amp; s.AllowPrefix </span><span class="cov8" title="1">{
+                return fmt.Errorf("v prefix is required")
+        }</span>
+
+        // Split version into parts
+        <span class="cov8" title="1">parts := strings.SplitN(str, "+", 2)
+        versionParts := strings.SplitN(parts[0], "-", 2)
+
+        // Validate core version (X.Y.Z)
+        core := strings.Split(versionParts[0], ".")
+        if len(core) != 3 </span><span class="cov8" title="1">{
+                return fmt.Errorf("version must be in format X.Y.Z")
+        }</span>
+
+        <span class="cov8" title="1">for _, num := range core </span><span class="cov8" title="1">{
+                if !regexp.MustCompile(`^\d+$`).MatchString(num) </span><span class="cov8" title="1">{
+                        return fmt.Errorf("version components must be numeric")
+                }</span>
+        }
+
+        // Validate prerelease
+        <span class="cov8" title="1">if len(versionParts) &gt; 1 </span><span class="cov8" title="1">{
+                if !s.AllowPrerelease </span><span class="cov8" title="1">{
+                        return fmt.Errorf("prerelease versions not allowed")
+                }</span>
+                <span class="cov8" title="1">if !regexp.MustCompile(`^[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*$`).MatchString(versionParts[1]) </span><span class="cov0" title="0">{
+                        return fmt.Errorf("invalid prerelease format")
+                }</span>
+        }
+
+        // Validate build metadata
+        <span class="cov8" title="1">if len(parts) &gt; 1 </span><span class="cov8" title="1">{
+                if !s.AllowBuild </span><span class="cov8" title="1">{
+                        return fmt.Errorf("build metadata not allowed")
+                }</span>
+                <span class="cov8" title="1">if !regexp.MustCompile(`^[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*$`).MatchString(parts[1]) </span><span class="cov0" title="0">{
+                        return fmt.Errorf("invalid build metadata format")
+                }</span>
+        }
+
+        <span class="cov8" title="1">return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package rules
+
+import (
+        "fmt"
+        "reflect"
+)
+
+type Rule interface {
+        Validate(value interface{}) error
+}
+
+type Length struct {
+        Min int
+        Max int
+}
+
+func (l Length) Validate(value interface{}) error <span class="cov8" title="1">{
+        v := reflect.ValueOf(value)
+        
+        switch v.Kind() </span>{
+        case reflect.Slice, reflect.Array, reflect.Map, reflect.String:<span class="cov8" title="1">
+                length := v.Len()
+                if length &lt; l.Min </span><span class="cov8" title="1">{
+                        return fmt.Errorf("length must be at least %d", l.Min)
+                }</span>
+                <span class="cov8" title="1">if l.Max &gt; 0 &amp;&amp; length &gt; l.Max </span><span class="cov8" title="1">{
+                        return fmt.Errorf("length must not exceed %d", l.Max)
+                }</span>
+                <span class="cov8" title="1">return nil</span>
+        default:<span class="cov8" title="1">
+                return fmt.Errorf("value must be a slice, array, map, or string")</span>
+        }
+}
+
+type Each struct {
+        Rule Rule
+}
+
+func (e Each) Validate(value interface{}) error <span class="cov8" title="1">{
+        v := reflect.ValueOf(value)
+        
+        if v.Kind() != reflect.Slice &amp;&amp; v.Kind() != reflect.Array </span><span class="cov8" title="1">{
+                return fmt.Errorf("value must be a slice or array")
+        }</span>
+
+        <span class="cov8" title="1">for i := 0; i &lt; v.Len(); i++ </span><span class="cov8" title="1">{
+                if err := e.Rule.Validate(v.Index(i).Interface()); err != nil </span><span class="cov8" title="1">{
+                        return fmt.Errorf("item at index %d: %v", i, err)
+                }</span>
+        }
+        <span class="cov8" title="1">return nil</span>
+}
+
+type Contains struct {
+        Value interface{}
+}
+
+func (c Contains) Validate(value interface{}) error <span class="cov8" title="1">{
+        v := reflect.ValueOf(value)
+        
+        if v.Kind() != reflect.Slice &amp;&amp; v.Kind() != reflect.Array </span><span class="cov8" title="1">{
+                return fmt.Errorf("value must be a slice or array")
+        }</span>
+
+        <span class="cov8" title="1">for i := 0; i &lt; v.Len(); i++ </span><span class="cov8" title="1">{
+                if reflect.DeepEqual(v.Index(i).Interface(), c.Value) </span><span class="cov8" title="1">{
+                        return nil
+                }</span>
+        }
+        <span class="cov8" title="1">return fmt.Errorf("value must contain %v", c.Value)</span>
+}
+
+type Unique struct{}
+
+func (u Unique) Validate(value interface{}) error <span class="cov8" title="1">{
+        v := reflect.ValueOf(value)
+        
+        if v.Kind() != reflect.Slice &amp;&amp; v.Kind() != reflect.Array </span><span class="cov8" title="1">{
+                return fmt.Errorf("value must be a slice or array")
+        }</span>
+
+        <span class="cov8" title="1">seen := make(map[interface{}]bool)
+        for i := 0; i &lt; v.Len(); i++ </span><span class="cov8" title="1">{
+                item := v.Index(i).Interface()
+                if seen[item] </span><span class="cov8" title="1">{
+                        return fmt.Errorf("duplicate value found: %v", item)
+                }</span>
+                <span class="cov8" title="1">seen[item] = true</span>
+        }
+        <span class="cov8" title="1">return nil</span>
+}
+
+type Map struct {
+        Key   Rule
+        Value Rule
+}
+
+func (m Map) Validate(value interface{}) error <span class="cov8" title="1">{
+        if value == nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("map is nil")
+        }</span>
+
+        <span class="cov8" title="1">v := reflect.ValueOf(value)
+        if v.Kind() != reflect.Map </span><span class="cov8" title="1">{
+                return fmt.Errorf("value is not a map")
+        }</span>
+
+        <span class="cov8" title="1">for _, key := range v.MapKeys() </span><span class="cov8" title="1">{
+                if m.Key != nil </span><span class="cov8" title="1">{
+                        if err := m.Key.Validate(key.Interface()); err != nil </span><span class="cov8" title="1">{
+                                return fmt.Errorf("invalid map key: %v", err)
+                        }</span>
+                }
+
+                <span class="cov8" title="1">if m.Value != nil </span><span class="cov8" title="1">{
+                        if err := m.Value.Validate(v.MapIndex(key).Interface()); err != nil </span><span class="cov8" title="1">{
+                                return fmt.Errorf("invalid map value for key %v: %v", key.Interface(), err)
+                        }</span>
+                }
+        }
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+type Slice struct {
+        Rule Rule
+}
+
+func (s Slice) Validate(value interface{}) error <span class="cov8" title="1">{
+        if value == nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("slice is nil")
+        }</span>
+
+        <span class="cov8" title="1">v := reflect.ValueOf(value)
+        if v.Kind() != reflect.Slice </span><span class="cov8" title="1">{
+                return fmt.Errorf("value is not a slice")
+        }</span>
+
+        <span class="cov8" title="1">for i := 0; i &lt; v.Len(); i++ </span><span class="cov8" title="1">{
+                item := v.Index(i)
+                if s.Rule != nil </span><span class="cov8" title="1">{
+                        if err := s.Rule.Validate(item.Interface()); err != nil </span><span class="cov8" title="1">{
+                                return fmt.Errorf("invalid item at index %d: %v", i, err)
+                        }</span>
+                }
+        }
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+type EachMulti struct {
+        Rules []Rule
+}
+
+func (e EachMulti) Validate(value interface{}) error <span class="cov8" title="1">{
+        v := reflect.ValueOf(value)
+        
+        if v.Kind() != reflect.Slice &amp;&amp; v.Kind() != reflect.Array </span><span class="cov8" title="1">{
+                return fmt.Errorf("value must be a slice or array")
+        }</span>
+
+        <span class="cov8" title="1">for i := 0; i &lt; v.Len(); i++ </span><span class="cov8" title="1">{
+                item := v.Index(i).Interface()
+                for _, rule := range e.Rules </span><span class="cov8" title="1">{
+                        if err := rule.Validate(item); err != nil </span><span class="cov8" title="1">{
+                                return fmt.Errorf("item at index %d failed validation: %v", i, err)
+                        }</span>
+                }
+        }
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+type Keys struct {
+        Rules []Rule
+}
+
+func (k Keys) Validate(value interface{}) error <span class="cov8" title="1">{
+        v := reflect.ValueOf(value)
+        if v.Kind() != reflect.Map </span><span class="cov8" title="1">{
+                return fmt.Errorf("value must be a map")
+        }</span>
+
+        <span class="cov8" title="1">keys := v.MapKeys()
+        for _, rule := range k.Rules </span><span class="cov8" title="1">{
+                for _, key := range keys </span><span class="cov8" title="1">{
+                        if err := rule.Validate(key.Interface()); err != nil </span><span class="cov8" title="1">{
+                                return fmt.Errorf("map key %v failed validation: %v", key.Interface(), err)
+                        }</span>
+                }
+        }
+
+        <span class="cov8" title="1">return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package rules
+
+import (
+        "encoding/json"
+        "fmt"
+        "net/url"
+        "reflect"
+        "regexp"
+        "time"
+)
+
+type TimeFormat struct {
+        Layout string
+}
+
+func (t TimeFormat) Validate(value interface{}) error <span class="cov8" title="1">{
+        str, ok := value.(string)
+        if !ok </span><span class="cov8" title="1">{
+                return fmt.Errorf("value must be a string")
+        }</span>
+
+        <span class="cov8" title="1">_, err := time.Parse(t.Layout, str)
+        if err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("invalid time format: must match layout %s", t.Layout)
+        }</span>
+        <span class="cov8" title="1">return nil</span>
+}
+
+type URL struct {
+        AllowedSchemes []string
+}
+
+func (u URL) Validate(value interface{}) error <span class="cov8" title="1">{
+        str, ok := value.(string)
+        if !ok </span><span class="cov8" title="1">{
+                return fmt.Errorf("value must be a string")
+        }</span>
+
+        <span class="cov8" title="1">parsed, err := url.Parse(str)
+        if err != nil || parsed.Scheme == "" || parsed.Host == "" </span><span class="cov8" title="1">{
+                return fmt.Errorf("invalid URL format")
+        }</span>
+
+        <span class="cov8" title="1">if len(u.AllowedSchemes) &gt; 0 </span><span class="cov8" title="1">{
+                valid := false
+                for _, scheme := range u.AllowedSchemes </span><span class="cov8" title="1">{
+                        if parsed.Scheme == scheme </span><span class="cov8" title="1">{
+                                valid = true
+                                break</span>
+                        }
+                }
+                <span class="cov8" title="1">if !valid </span><span class="cov8" title="1">{
+                        return fmt.Errorf("URL scheme must be one of: %v", u.AllowedSchemes)
+                }</span>
+        }
+        <span class="cov8" title="1">return nil</span>
+}
+
+type JSON struct{}
+
+func (j JSON) Validate(value interface{}) error <span class="cov8" title="1">{
+        str, ok := value.(string)
+        if !ok </span><span class="cov8" title="1">{
+                return fmt.Errorf("value must be a string")
+        }</span>
+
+        <span class="cov8" title="1">var js interface{}
+        if err := json.Unmarshal([]byte(str), &amp;js); err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("invalid JSON format")
+        }</span>
+        <span class="cov8" title="1">return nil</span>
+}
+
+type OneOf struct {
+        Values []interface{}
+}
+
+func (o OneOf) Validate(value interface{}) error <span class="cov8" title="1">{
+        for _, v := range o.Values </span><span class="cov8" title="1">{
+                if reflect.DeepEqual(value, v) </span><span class="cov8" title="1">{
+                        return nil
+                }</span>
+        }
+        <span class="cov8" title="1">return fmt.Errorf("value must be one of: %v", o.Values)</span>
+}
+
+type Custom struct {
+        Fn func(interface{}) error
+}
+
+func (c Custom) Validate(value interface{}) error <span class="cov8" title="1">{
+        return c.Fn(value)
+}</span>
+
+// Phone validates phone numbers
+type Phone struct {
+        AllowEmpty bool
+}
+
+func (p Phone) Validate(value interface{}) error <span class="cov8" title="1">{
+        str, ok := value.(string)
+        if !ok </span><span class="cov8" title="1">{
+                return fmt.Errorf("expected string, got %T", value)
+        }</span>
+
+        <span class="cov8" title="1">if str == "" &amp;&amp; p.AllowEmpty </span><span class="cov8" title="1">{
+                return nil
+        }</span>
+
+        // Basic phone validation: +1234567890 or 1234567890
+        <span class="cov8" title="1">matched, _ := regexp.MatchString(`^\+?\d{10,15}$`, str)
+        if !matched </span><span class="cov8" title="1">{
+                return fmt.Errorf("invalid phone number format")
+        }</span>
+        <span class="cov8" title="1">return nil</span>
+}
+
+// UUID validates UUID strings
+type UUID struct{}
+
+func (u UUID) Validate(value interface{}) error <span class="cov8" title="1">{
+        str, ok := value.(string)
+        if !ok </span><span class="cov8" title="1">{
+                return fmt.Errorf("expected string, got %T", value)
+        }</span>
+
+        <span class="cov8" title="1">matched, _ := regexp.MatchString(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`, str)
+        if !matched </span><span class="cov8" title="1">{
+                return fmt.Errorf("invalid UUID format")
+        }</span>
+        <span class="cov8" title="1">return nil</span>
+}
+
+// Date validates date strings
+type Date struct {
+        Format     string
+        Min        time.Time
+        Max        time.Time
+        AllowEmpty bool
+}
+
+func (d Date) Validate(value interface{}) error <span class="cov8" title="1">{
+        str, ok := value.(string)
+        if !ok </span><span class="cov8" title="1">{
+                return fmt.Errorf("expected string, got %T", value)
+        }</span>
+
+        <span class="cov8" title="1">if str == "" &amp;&amp; d.AllowEmpty </span><span class="cov8" title="1">{
+                return nil
+        }</span>
+
+        <span class="cov8" title="1">t, err := time.Parse(d.Format, str)
+        if err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("invalid date format: %v", err)
+        }</span>
+
+        <span class="cov8" title="1">if !d.Min.IsZero() &amp;&amp; t.Before(d.Min) </span><span class="cov8" title="1">{
+                return fmt.Errorf("date must not be before %v", d.Min.Format(d.Format))
+        }</span>
+
+        <span class="cov8" title="1">if !d.Max.IsZero() &amp;&amp; t.After(d.Max) </span><span class="cov8" title="1">{
+                return fmt.Errorf("date must not be after %v", d.Max.Format(d.Format))
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// Required validates that a value is not empty
+type Required struct{}
+
+func (r Required) Validate(value interface{}) error <span class="cov8" title="1">{
+        if value == nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("value is required")
+        }</span>
+
+        <span class="cov8" title="1">v := reflect.ValueOf(value)
+        switch v.Kind() </span>{
+        case reflect.String:<span class="cov8" title="1">
+                if v.String() == "" </span><span class="cov8" title="1">{
+                        return fmt.Errorf("value is required")
+                }</span>
+        case reflect.Slice, reflect.Map:<span class="cov8" title="1">
+                if v.Len() == 0 </span><span class="cov8" title="1">{
+                        return fmt.Errorf("value is required")
+                }</span>
+        case reflect.Ptr:<span class="cov8" title="1">
+                if v.IsNil() </span><span class="cov8" title="1">{
+                        return fmt.Errorf("value is required")
+                }</span>
+        }
+        <span class="cov8" title="1">return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package rules
+
+import (
+        "fmt"
+        "reflect"
+)
+
+type When struct {
+        Condition func(interface{}) bool
+        Then      Rule
+        Else      Rule
+        parent    interface{}
+}
+
+func (w *When) SetParent(parent interface{}) <span class="cov8" title="1">{
+        w.parent = parent
+        if w.Then != nil </span><span class="cov8" title="1">{
+                if setter, ok := w.Then.(interface{ SetParent(interface{}) }); ok </span><span class="cov0" title="0">{
+                        setter.SetParent(parent)
+                }</span>
+        }
+        <span class="cov8" title="1">if w.Else != nil </span><span class="cov8" title="1">{
+                if setter, ok := w.Else.(interface{ SetParent(interface{}) }); ok </span><span class="cov0" title="0">{
+                        setter.SetParent(parent)
+                }</span>
+        }
+}
+
+func (w When) Validate(value interface{}) error <span class="cov8" title="1">{
+        if w.Condition(w.parent) </span><span class="cov8" title="1">{
+                if w.Then != nil </span><span class="cov8" title="1">{
+                        return w.Then.Validate(value)
+                }</span>
+        } else<span class="cov8" title="1"> if w.Else != nil </span><span class="cov8" title="1">{
+                return w.Else.Validate(value)
+        }</span>
+        <span class="cov8" title="1">return nil</span>
+}
+
+type If struct {
+        Field  string
+        Then   Rule
+        Else   Rule
+        parent interface{}
+}
+
+func (i *If) SetParent(parent interface{}) <span class="cov8" title="1">{
+        i.parent = parent
+        if i.Then != nil </span><span class="cov8" title="1">{
+                if setter, ok := i.Then.(interface{ SetParent(interface{}) }); ok </span><span class="cov0" title="0">{
+                        setter.SetParent(parent)
+                }</span>
+        }
+        <span class="cov8" title="1">if i.Else != nil </span><span class="cov0" title="0">{
+                if setter, ok := i.Else.(interface{ SetParent(interface{}) }); ok </span><span class="cov0" title="0">{
+                        setter.SetParent(parent)
+                }</span>
+        }
+}
+
+func (i If) Validate(value interface{}) error <span class="cov8" title="1">{
+        if i.parent == nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("parent not set")
+        }</span>
+
+        <span class="cov8" title="1">v := reflect.ValueOf(i.parent)
+        if v.Kind() == reflect.Ptr </span><span class="cov8" title="1">{
+                v = v.Elem()
+        }</span>
+
+        <span class="cov8" title="1">if v.Kind() != reflect.Struct </span><span class="cov0" title="0">{
+                return fmt.Errorf("parent must be a struct")
+        }</span>
+
+        <span class="cov8" title="1">field := v.FieldByName(i.Field)
+        if !field.IsValid() </span><span class="cov8" title="1">{
+                return fmt.Errorf("field %s not found", i.Field)
+        }</span>
+
+        <span class="cov8" title="1">if field.Kind() != reflect.Bool </span><span class="cov8" title="1">{
+                return fmt.Errorf("field %s is not a boolean", i.Field)
+        }</span>
+
+        <span class="cov8" title="1">if field.Bool() </span><span class="cov8" title="1">{
+                if i.Then != nil </span><span class="cov8" title="1">{
+                        return i.Then.Validate(value)
+                }</span>
+        } else<span class="cov8" title="1"> if i.Else != nil </span><span class="cov0" title="0">{
+                return i.Else.Validate(value)
+        }</span>
+        <span class="cov8" title="1">return nil</span>
+}
+
+type Unless struct {
+        Field  string
+        Then   Rule
+        Else   Rule
+        parent interface{}
+}
+
+func (u *Unless) SetParent(parent interface{}) <span class="cov8" title="1">{
+        u.parent = parent
+        if u.Then != nil </span><span class="cov8" title="1">{
+                if setter, ok := u.Then.(interface{ SetParent(interface{}) }); ok </span><span class="cov0" title="0">{
+                        setter.SetParent(parent)
+                }</span>
+        }
+        <span class="cov8" title="1">if u.Else != nil </span><span class="cov0" title="0">{
+                if setter, ok := u.Else.(interface{ SetParent(interface{}) }); ok </span><span class="cov0" title="0">{
+                        setter.SetParent(parent)
+                }</span>
+        }
+}
+
+func (u Unless) Validate(value interface{}) error <span class="cov8" title="1">{
+        if u.parent == nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("parent not set")
+        }</span>
+
+        <span class="cov8" title="1">v := reflect.ValueOf(u.parent)
+        if v.Kind() == reflect.Ptr </span><span class="cov8" title="1">{
+                v = v.Elem()
+        }</span>
+
+        <span class="cov8" title="1">if v.Kind() != reflect.Struct </span><span class="cov0" title="0">{
+                return fmt.Errorf("parent must be a struct")
+        }</span>
+
+        <span class="cov8" title="1">field := v.FieldByName(u.Field)
+        if !field.IsValid() </span><span class="cov8" title="1">{
+                return fmt.Errorf("field %s not found", u.Field)
+        }</span>
+
+        <span class="cov8" title="1">if field.Kind() != reflect.Bool </span><span class="cov8" title="1">{
+                return fmt.Errorf("field %s is not a boolean", u.Field)
+        }</span>
+
+        <span class="cov8" title="1">if !field.Bool() </span><span class="cov8" title="1">{
+                if u.Then != nil </span><span class="cov8" title="1">{
+                        return u.Then.Validate(value)
+                }</span>
+        } else<span class="cov8" title="1"> if u.Else != nil </span><span class="cov0" title="0">{
+                return u.Else.Validate(value)
+        }</span>
+        <span class="cov8" title="1">return nil</span>
+}
+
+type CrossField struct {
+        Field      string
+        ValidateFn func(parent, value interface{}) error
+        parent     interface{}
+}
+
+func (c *CrossField) SetParent(parent interface{}) <span class="cov0" title="0">{
+        c.parent = parent
+}</span>
+
+func (c CrossField) Validate(value interface{}) error <span class="cov0" title="0">{
+        if c.ValidateFn == nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("validation function not provided")
+        }</span>
+
+        <span class="cov0" title="0">if c.parent == nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("parent not set")
+        }</span>
+
+        <span class="cov0" title="0">return c.ValidateFn(c.parent, value)</span>
+}
+
+type DependentRequired struct {
+        Field  string
+        Parent interface{}
+}
+
+func (d DependentRequired) Validate(value interface{}) error <span class="cov0" title="0">{
+        if d.Parent == nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("parent struct not provided")
+        }</span>
+
+        <span class="cov0" title="0">parentVal := reflect.ValueOf(d.Parent)
+        if parentVal.Kind() == reflect.Ptr </span><span class="cov0" title="0">{
+                parentVal = parentVal.Elem()
+        }</span>
+
+        <span class="cov0" title="0">if parentVal.Kind() != reflect.Struct </span><span class="cov0" title="0">{
+                return fmt.Errorf("parent must be a struct")
+        }</span>
+
+        <span class="cov0" title="0">field := parentVal.FieldByName(d.Field)
+        if !field.IsValid() </span><span class="cov0" title="0">{
+                return fmt.Errorf("field %s not found", d.Field)
+        }</span>
+
+        // Check if the field is zero value
+        <span class="cov0" title="0">if field.IsZero() </span><span class="cov0" title="0">{
+                return fmt.Errorf("field %s is required", d.Field)
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package rules
+
+import (
+        "fmt"
+        "reflect"
+)
+
+type Range struct {
+        Min float64
+        Max float64
+}
+
+func (r Range) Validate(value interface{}) error <span class="cov8" title="1">{
+        v := reflect.ValueOf(value)
+        var num float64
+
+        switch v.Kind() </span>{
+        case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:<span class="cov8" title="1">
+                num = float64(v.Int())</span>
+        case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:<span class="cov0" title="0">
+                num = float64(v.Uint())</span>
+        case reflect.Float32, reflect.Float64:<span class="cov8" title="1">
+                num = v.Float()</span>
+        default:<span class="cov8" title="1">
+                return fmt.Errorf("value must be numeric")</span>
+        }
+
+        <span class="cov8" title="1">if num &lt; r.Min </span><span class="cov8" title="1">{
+                return fmt.Errorf("value must be greater than or equal to %v", r.Min)
+        }</span>
+        <span class="cov8" title="1">if r.Max &gt; 0 &amp;&amp; num &gt; r.Max </span><span class="cov8" title="1">{
+                return fmt.Errorf("value must be less than or equal to %v", r.Max)
+        }</span>
+        <span class="cov8" title="1">return nil</span>
+}
+
+type Positive struct{}
+
+func (p Positive) Validate(value interface{}) error <span class="cov8" title="1">{
+        v := reflect.ValueOf(value)
+        
+        switch v.Kind() </span>{
+        case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:<span class="cov8" title="1">
+                if v.Int() &lt;= 0 </span><span class="cov8" title="1">{
+                        return fmt.Errorf("value must be positive")
+                }</span>
+        case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:<span class="cov0" title="0">
+                if v.Uint() == 0 </span><span class="cov0" title="0">{
+                        return fmt.Errorf("value must be positive")
+                }</span>
+        case reflect.Float32, reflect.Float64:<span class="cov8" title="1">
+                if v.Float() &lt;= 0 </span><span class="cov8" title="1">{
+                        return fmt.Errorf("value must be positive")
+                }</span>
+        default:<span class="cov8" title="1">
+                return fmt.Errorf("value must be numeric")</span>
+        }
+        <span class="cov8" title="1">return nil</span>
+}
+
+// Min is a validation rule that ensures a numeric value is greater than or equal to a minimum value
+type Min struct {
+        Value float64
+}
+
+// Validate implements Rule
+func (m Min) Validate(value interface{}) error <span class="cov8" title="1">{
+        if value == nil </span><span class="cov8" title="1">{
+                return nil
+        }</span>
+
+        <span class="cov8" title="1">v := reflect.ValueOf(value)
+        switch v.Kind() </span>{
+        case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:<span class="cov8" title="1">
+                if float64(v.Int()) &lt; m.Value </span><span class="cov8" title="1">{
+                        return fmt.Errorf("value must be greater than or equal to %v", m.Value)
+                }</span>
+        case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:<span class="cov8" title="1">
+                if float64(v.Uint()) &lt; m.Value </span><span class="cov8" title="1">{
+                        return fmt.Errorf("value must be greater than or equal to %v", m.Value)
+                }</span>
+        case reflect.Float32, reflect.Float64:<span class="cov8" title="1">
+                if v.Float() &lt; m.Value </span><span class="cov8" title="1">{
+                        return fmt.Errorf("value must be greater than or equal to %v", m.Value)
+                }</span>
+        default:<span class="cov8" title="1">
+                return fmt.Errorf("value must be a number")</span>
+        }
+
+        <span class="cov8" title="1">return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">package validator
+
+import (
+        "fmt"
+        "reflect"
+        "strconv"
+        "strings"
+
+        "goov/validator/rules"
+)
+
+type Validator struct {
+        rules map[string]rules.Rule
+}
+
+func New() *Validator <span class="cov8" title="1">{
+        return &amp;Validator{
+                rules: make(map[string]rules.Rule),
+        }
+}</span>
+
+func (v *Validator) AddRule(name string, rule rules.Rule) <span class="cov8" title="1">{
+        v.rules[name] = rule
+}</span>
+
+func (v *Validator) Validate(value interface{}) error <span class="cov8" title="1">{
+        if value == nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("value is nil")
+        }</span>
+
+        <span class="cov8" title="1">val := reflect.ValueOf(value)
+        if val.Kind() == reflect.Ptr </span><span class="cov8" title="1">{
+                if val.IsNil() </span><span class="cov0" title="0">{
+                        return fmt.Errorf("value is nil")
+                }</span>
+                <span class="cov8" title="1">val = val.Elem()</span>
+        }
+
+        <span class="cov8" title="1">if val.Kind() != reflect.Struct </span><span class="cov8" title="1">{
+                return fmt.Errorf("value must be a struct or pointer to struct")
+        }</span>
+
+        <span class="cov8" title="1">return v.validateStruct(val)</span>
+}
+
+func (v *Validator) validateStruct(val reflect.Value) error <span class="cov8" title="1">{
+        if val.Kind() == reflect.Ptr </span><span class="cov0" title="0">{
+                if val.IsNil() </span><span class="cov0" title="0">{
+                        return nil
+                }</span>
+                <span class="cov0" title="0">val = val.Elem()</span>
+        }
+
+        <span class="cov8" title="1">if val.Kind() != reflect.Struct </span><span class="cov0" title="0">{
+                return nil
+        }</span>
+
+        <span class="cov8" title="1">valType := val.Type()
+        var parent interface{}
+        if val.CanAddr() </span><span class="cov8" title="1">{
+                parent = val.Addr().Interface()
+        }</span>
+
+        <span class="cov8" title="1">for i := 0; i &lt; val.NumField(); i++ </span><span class="cov8" title="1">{
+                field := val.Field(i)
+                fieldType := valType.Field(i)
+
+                if !fieldType.IsExported() </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+
+                <span class="cov8" title="1">tag := fieldType.Tag.Get("validate")
+                if tag == "" </span><span class="cov8" title="1">{
+                        continue</span>
+                }
+
+                // Handle nested struct validation
+                <span class="cov8" title="1">if field.Kind() == reflect.Ptr </span><span class="cov8" title="1">{
+                        if field.IsNil() </span><span class="cov8" title="1">{
+                                if err := v.validateField(field, tag, parent); err != nil </span><span class="cov8" title="1">{
+                                        return fmt.Errorf("%s: %v", fieldType.Name, err)
+                                }</span>
+                                <span class="cov8" title="1">continue</span>
+                        }
+                        <span class="cov8" title="1">field = field.Elem()</span>
+                }
+
+                <span class="cov8" title="1">if field.Kind() == reflect.Struct </span><span class="cov8" title="1">{
+                        if err := v.validateStruct(field); err != nil </span><span class="cov8" title="1">{
+                                return fmt.Errorf("%s: %v", fieldType.Name, err)
+                        }</span>
+                }
+
+                <span class="cov8" title="1">if err := v.validateField(field, tag, parent); err != nil </span><span class="cov8" title="1">{
+                        return fmt.Errorf("%s: %v", fieldType.Name, err)
+                }</span>
+        }
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+func (v *Validator) validateField(field reflect.Value, tag string, parent interface{}) error <span class="cov8" title="1">{
+        if tag == "" </span><span class="cov0" title="0">{
+                return nil
+        }</span>
+
+        <span class="cov8" title="1">for _, rule := range strings.Split(tag, ",") </span><span class="cov8" title="1">{
+                parts := strings.Split(rule, "=")
+                ruleName := parts[0]
+                var ruleValue string
+                if len(parts) &gt; 1 </span><span class="cov8" title="1">{
+                        ruleValue = parts[1]
+                }</span>
+
+                <span class="cov8" title="1">switch ruleName </span>{
+                case "slice":<span class="cov8" title="1">
+                        if err := v.validateSlice(field, rule); err != nil </span><span class="cov8" title="1">{
+                                return err
+                        }</span>
+                case "min":<span class="cov8" title="1">
+                        val, err := strconv.ParseFloat(ruleValue, 64)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("invalid min value: %s", ruleValue)
+                        }</span>
+                        <span class="cov8" title="1">minRule := rules.Min{Value: val}
+                        if err := minRule.Validate(field.Interface()); err != nil </span><span class="cov0" title="0">{
+                                return err
+                        }</span>
+                default:<span class="cov8" title="1">
+                        rule := v.rules[ruleName]
+                        if rule == nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("unknown validation rule: %s", ruleName)
+                        }</span>
+                        <span class="cov8" title="1">if setter, ok := rule.(interface{ SetParent(interface{}) }); ok </span><span class="cov8" title="1">{
+                                setter.SetParent(parent)
+                        }</span>
+                        <span class="cov8" title="1">if err := rule.Validate(field.Interface()); err != nil </span><span class="cov8" title="1">{
+                                return err
+                        }</span>
+                }
+        }
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+func (v *Validator) validateSlice(field reflect.Value, tag string) error <span class="cov8" title="1">{
+        if tag == "" </span><span class="cov0" title="0">{
+                return nil
+        }</span>
+
+        <span class="cov8" title="1">parts := strings.Split(tag, "=")
+        if len(parts) != 2 </span><span class="cov0" title="0">{
+                return fmt.Errorf("invalid slice validation format: %s", tag)
+        }</span>
+
+        <span class="cov8" title="1">rule := v.rules[parts[1]]
+        if rule == nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("unknown validation rule: %s", parts[1])
+        }</span>
+
+        <span class="cov8" title="1">if field.Kind() != reflect.Slice </span><span class="cov0" title="0">{
+                return fmt.Errorf("field is not a slice")
+        }</span>
+
+        <span class="cov8" title="1">if field.IsNil() </span><span class="cov8" title="1">{
+                return fmt.Errorf("slice is nil")
+        }</span>
+
+        <span class="cov8" title="1">for i := 0; i &lt; field.Len(); i++ </span><span class="cov8" title="1">{
+                item := field.Index(i)
+                if item.Kind() == reflect.Ptr &amp;&amp; !item.IsNil() </span><span class="cov0" title="0">{
+                        item = item.Elem()
+                }</span>
+
+                <span class="cov8" title="1">if item.Kind() == reflect.Struct </span><span class="cov8" title="1">{
+                        if err := v.validateStruct(item); err != nil </span><span class="cov8" title="1">{
+                                return fmt.Errorf("item at index %d: %v", i, err)
+                        }</span>
+                } else<span class="cov0" title="0"> {
+                        if err := rule.Validate(item.Interface()); err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("item at index %d: %v", i, err)
+                        }</span>
+                }
+        }
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+func (v *Validator) ValidateAll(value interface{}) []error <span class="cov8" title="1">{
+        var errors []error
+
+        if value == nil </span><span class="cov0" title="0">{
+                return append(errors, fmt.Errorf("value is nil"))
+        }</span>
+
+        <span class="cov8" title="1">val := reflect.ValueOf(value)
+        if val.Kind() == reflect.Ptr </span><span class="cov8" title="1">{
+                if val.IsNil() </span><span class="cov0" title="0">{
+                        return append(errors, fmt.Errorf("value is nil"))
+                }</span>
+                <span class="cov8" title="1">val = val.Elem()</span>
+        }
+
+        <span class="cov8" title="1">if val.Kind() != reflect.Struct </span><span class="cov8" title="1">{
+                return append(errors, fmt.Errorf("value must be a struct or pointer to struct"))
+        }</span>
+
+        <span class="cov8" title="1">typ := val.Type()
+        for i := 0; i &lt; val.NumField(); i++ </span><span class="cov8" title="1">{
+                field := val.Field(i)
+                fieldType := typ.Field(i)
+
+                if !fieldType.IsExported() </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+
+                <span class="cov8" title="1">tag := fieldType.Tag.Get("validate")
+                if tag == "" </span><span class="cov8" title="1">{
+                        continue</span>
+                }
+
+                <span class="cov8" title="1">if field.Kind() == reflect.Ptr </span><span class="cov8" title="1">{
+                        if field.IsNil() </span><span class="cov0" title="0">{
+                                for _, ruleName := range strings.Split(tag, ",") </span><span class="cov0" title="0">{
+                                        rule, ok := v.rules[ruleName]
+                                        if !ok </span><span class="cov0" title="0">{
+                                                errors = append(errors, fmt.Errorf("%s: unknown validation rule: %s", fieldType.Name, ruleName))
+                                                continue</span>
+                                        }
+
+                                        <span class="cov0" title="0">if setter, ok := rule.(interface{ SetParent(interface{}) }); ok </span><span class="cov0" title="0">{
+                                                setter.SetParent(val.Addr().Interface())
+                                        }</span>
+
+                                        <span class="cov0" title="0">if err := rule.Validate(nil); err != nil </span><span class="cov0" title="0">{
+                                                errors = append(errors, fmt.Errorf("%s: %v", fieldType.Name, err))
+                                        }</span>
+                                }
+                                <span class="cov0" title="0">continue</span>
+                        }
+                        <span class="cov8" title="1">field = field.Elem()</span>
+                }
+
+                <span class="cov8" title="1">if field.Kind() == reflect.Struct </span><span class="cov8" title="1">{
+                        if err := v.validateStruct(field); err != nil </span><span class="cov8" title="1">{
+                                errors = append(errors, fmt.Errorf("%s: %v", fieldType.Name, err))
+                        }</span>
+                        <span class="cov8" title="1">continue</span>
+                }
+
+                <span class="cov8" title="1">if field.Kind() == reflect.Slice </span><span class="cov0" title="0">{
+                        if err := v.validateSlice(field, tag); err != nil </span><span class="cov0" title="0">{
+                                errors = append(errors, fmt.Errorf("%s: %v", fieldType.Name, err))
+                        }</span>
+                        <span class="cov0" title="0">continue</span>
+                }
+
+                <span class="cov8" title="1">if err := v.validateField(field, tag, val.Addr().Interface()); err != nil </span><span class="cov8" title="1">{
+                        errors = append(errors, fmt.Errorf("%s: %v", fieldType.Name, err))
+                }</span>
+        }
+
+        <span class="cov8" title="1">return errors</span>
+}
+
+type Pattern struct {
+        rules []rules.Rule
+}
+
+func NewPattern(rules ...rules.Rule) *Pattern <span class="cov8" title="1">{
+        return &amp;Pattern{rules: rules}
+}</span>
+
+func (p *Pattern) Validate(value interface{}) error <span class="cov8" title="1">{
+        for _, rule := range p.rules </span><span class="cov8" title="1">{
+                if err := rule.Validate(value); err != nil </span><span class="cov8" title="1">{
+                        return err
+                }</span>
+        }
+        <span class="cov8" title="1">return nil</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

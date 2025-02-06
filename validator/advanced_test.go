@@ -1,69 +1,73 @@
 package validator
 
 import (
-	"fmt"
 	"testing"
 
 	"goov/validator/rules"
-	"goov/validator/testdata"
 )
+
+type Address struct {
+	Street  string `validate:"required"`
+	City    string `validate:"required"`
+	Country string `validate:"required"`
+	ZIP     string `validate:"required"`
+}
+
+type OrderItem struct {
+	ProductID string `validate:"required"`
+	Quantity  int    `validate:"min=0"`
+}
+
+type Order struct {
+	ID    string      `validate:"required"`
+	Items []OrderItem `validate:"slice=required"`
+}
 
 func TestNestedValidation(t *testing.T) {
 	v := New()
-
-	// Address validation rules
-	v.AddRule("BillingAddr.Street", rules.Length{Min: 5, Max: 100})
-	v.AddRule("BillingAddr.City", rules.Length{Min: 2, Max: 50})
-	v.AddRule("BillingAddr.Country", rules.Length{Min: 2, Max: 50})
-	
-	// OrderItem validation rules
-	v.AddRule("Items.ProductID", rules.Positive{})
-	v.AddRule("Items.Quantity", rules.Range{Min: 1, Max: 100})
-	v.AddRule("Items.UnitPrice", rules.Range{Min: 0.01, Max: 1000000})
-	
-	// Map validation rules
-	v.AddRule("Contacts.Value", rules.Length{Min: 5, Max: 100})
+	v.AddRule("required", rules.Required{})
+	v.AddRule("min", rules.Min{Value: 0})
+	v.AddRule("slice", rules.Slice{Rule: rules.Required{}})
 
 	tests := []struct {
 		name    string
-		order   testdata.Order
+		value   interface{}
 		wantErr bool
 	}{
 		{
 			name: "valid order",
-			order: testdata.Order{
-				ID:         1,
-				CustomerID: 100,
-				Status:     "pending",
-				Items: []testdata.OrderItem{
-					{ProductID: 1, Quantity: 2, UnitPrice: 10.99},
-				},
-				BillingAddr: testdata.Address{
-					Street:  "123 Main St",
-					City:    "New York",
-					Country: "USA",
-				},
-				Contacts: map[string]testdata.Contact{
-					"email": {Type: "email", Value: "customer@example.com"},
+			value: &Order{
+				ID: "123",
+				Items: []OrderItem{
+					{
+						ProductID: "P1",
+						Quantity:  1,
+					},
+					{
+						ProductID: "P2",
+						Quantity:  2,
+					},
 				},
 			},
 			wantErr: false,
 		},
 		{
-			name: "invalid nested address",
-			order: testdata.Order{
-				BillingAddr: testdata.Address{
-					Street: "123", // too short
-					City:   "NY",  // too short
-				},
+			name: "invalid order - no items",
+			value: &Order{
+				ID:    "123",
+				Items: nil,
 			},
 			wantErr: true,
 		},
 		{
 			name: "invalid order item",
-			order: testdata.Order{
-				Items: []testdata.OrderItem{
-					{ProductID: -1, Quantity: 0}, // invalid product ID and quantity
+			value: &Order{
+				ID: "123",
+				Items: []OrderItem{
+					{
+						ProductID: "",  // Invalid: required
+						Quantity:  -1,  // Invalid: min=0
+					},
 				},
 			},
 			wantErr: true,
@@ -72,7 +76,7 @@ func TestNestedValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := v.Validate(tt.order)
+			err := v.Validate(tt.value)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -80,79 +84,66 @@ func TestNestedValidation(t *testing.T) {
 	}
 }
 
+type PremiumUser struct {
+	Username string `validate:"required"`
+	Password string `validate:"required"`
+	Premium  bool
+	Details  *UserDetails `validate:"if"`
+}
+
+type UserDetails struct {
+	Email     string `validate:"required,email"`
+	Phone     string `validate:"required"`
+	BillingID string `validate:"required"`
+}
+
 func TestConditionalValidation(t *testing.T) {
 	v := New()
-
-	// Add conditional validation
-	v.AddRule("PremiumDetails", &rules.When{
-		Condition: func(value interface{}) bool {
-			user, ok := value.(*testdata.User)
-			return ok && user.Premium
-		},
-		Then: rules.Length{Min: 1, Max: 100},
+	v.AddRule("required", rules.Required{})
+	v.AddRule("email", rules.EmailDNS{})
+	v.AddRule("if", &rules.If{
+		Field: "Premium",
+		Then:  rules.Required{},
 	})
-
-	// Add cross-field validation
-	crossFieldRule := &rules.CrossField{
-		Field: "Password",
-		ValidateFn: func(parent, value interface{}) error {
-			user, ok := parent.(*testdata.User)
-			if !ok {
-				return fmt.Errorf("expected *testdata.User, got %T", parent)
-			}
-			if user.ConfirmPassword != user.Password {
-				return fmt.Errorf("passwords do not match")
-			}
-			return nil
-		},
-	}
-	crossFieldRule.SetParent(&testdata.User{})
-	v.AddRule("ConfirmPassword", crossFieldRule)
 
 	tests := []struct {
 		name    string
-		user    *testdata.User
+		user    *PremiumUser
 		wantErr bool
 	}{
 		{
 			name: "valid premium user",
-			user: &testdata.User{
-				Username:        "john",
-				Premium:         true,
-				PremiumDetails: "VIP Member",
-				Password:       "secret",
-				ConfirmPassword: "secret",
+			user: &PremiumUser{
+				Username: "john_doe",
+				Password: "password123",
+				Premium:  true,
+				Details: &UserDetails{
+					Email:     "john@example.com",
+					Phone:     "123-456-7890",
+					BillingID: "B123",
+				},
 			},
 			wantErr: false,
 		},
 		{
 			name: "invalid premium user - missing details",
-			user: &testdata.User{
-				Username: "john",
+			user: &PremiumUser{
+				Username: "john_doe",
+				Password: "password123",
 				Premium:  true,
-				Password: "secret",
-				ConfirmPassword: "secret",
+				Details:  nil,
 			},
 			wantErr: true,
 		},
 		{
 			name: "valid non-premium user - no details required",
-			user: &testdata.User{
-				Username: "john",
+			user: &PremiumUser{
+				Username: "john_doe",
+				Password: "password123",
 				Premium:  false,
-				Password: "secret",
-				ConfirmPassword: "secret",
+				Details:  nil,
 			},
 			wantErr: false,
-		},
-		{
-			name: "invalid password confirmation",
-			user: &testdata.User{
-				Username:        "john",
-				Password:       "secret",
-				ConfirmPassword: "different",
-			},
-			wantErr: true,
 		},
 	}
 

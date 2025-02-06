@@ -3,224 +3,279 @@ package validator
 import (
 	"fmt"
 	"reflect"
-	"regexp"
+	"strconv"
 	"strings"
 
 	"goov/validator/rules"
 )
 
 type Validator struct {
-	rules map[string][]rules.ValidationRule
-}
-
-type ValidationError struct {
-	Field   string
-	Message string
-}
-
-func (e *ValidationError) Error() string {
-	return fmt.Sprintf("%s: %s", e.Field, e.Message)
-}
-
-type ValidationErrors []ValidationError
-
-func (e ValidationErrors) Error() string {
-	var messages []string
-	for _, err := range e {
-		messages = append(messages, err.Error())
-	}
-	return strings.Join(messages, "; ")
+	rules map[string]rules.Rule
 }
 
 func New() *Validator {
-	v := &Validator{
-		rules: make(map[string][]rules.ValidationRule),
+	return &Validator{
+		rules: make(map[string]rules.Rule),
 	}
-
-	// Register default rules
-	v.AddRule("required", rules.Required{})
-	v.AddRule("uuid", rules.UUID{})
-	v.AddRule("email", rules.EmailDNS{})
-	v.AddRule("hostname", rules.Hostname{})
-	v.AddRule("port", rules.Port{})
-	v.AddRule("semver", rules.SemVer{})
-	v.AddRule("cidr", rules.CIDR{})
-	v.AddRule("mac", rules.MAC{})
-
-	return v
 }
 
-func (v *Validator) AddRule(field string, rule rules.ValidationRule) {
-	if v.rules[field] == nil {
-		v.rules[field] = make([]rules.ValidationRule, 0)
-	}
-	v.rules[field] = append(v.rules[field], rule)
+func (v *Validator) AddRule(name string, rule rules.Rule) {
+	v.rules[name] = rule
 }
 
-func (v *Validator) validateValue(field string, value reflect.Value, parent interface{}) []ValidationError {
-	var errors []ValidationError
-
-	// Get rules for this field
-	rules, exists := v.rules[field]
-	if !exists {
-		return errors
+func (v *Validator) Validate(value interface{}) error {
+	if value == nil {
+		return fmt.Errorf("value is nil")
 	}
 
-	// Apply all rules
-	for _, rule := range rules {
-		// For all validations, pass the field value and update parent if needed
-		if rule, ok := rule.(interface{ SetParent(interface{}) }); ok {
-			rule.SetParent(parent)
-		}
-
-		// For all validations, pass the field value
-		if err := rule.Validate(value.Interface()); err != nil {
-			errors = append(errors, ValidationError{
-				Field:   field,
-				Message: err.Error(),
-			})
-		}
-	}
-
-	return errors
-}
-
-func (v *Validator) validateStruct(current reflect.Value, parentField string, parent interface{}) []ValidationError {
-	var errors []ValidationError
-
-	t := current.Type()
-	for i := 0; i < t.NumField(); i++ {
-		field := t.Field(i)
-		value := current.Field(i)
-
-		// Build the full field path
-		fieldName := field.Name
-		if parentField != "" {
-			fieldName = parentField + "." + fieldName
-		}
-
-		// Handle nested structs
-		if value.Kind() == reflect.Struct {
-			errors = append(errors, v.validateStruct(value, fieldName, parent)...)
-		}
-
-		// Handle slice/array of structs
-		if (value.Kind() == reflect.Slice || value.Kind() == reflect.Array) && value.Type().Elem().Kind() == reflect.Struct {
-			for j := 0; j < value.Len(); j++ {
-				nestedErrors := v.validateStruct(value.Index(j), fmt.Sprintf("%s[%d]", fieldName, j), parent)
-				errors = append(errors, nestedErrors...)
-			}
-		}
-
-		// Handle map of structs
-		if value.Kind() == reflect.Map && value.Type().Elem().Kind() == reflect.Struct {
-			for _, key := range value.MapKeys() {
-				nestedErrors := v.validateStruct(value.MapIndex(key), fmt.Sprintf("%s[%v]", fieldName, key.Interface()), parent)
-				errors = append(errors, nestedErrors...)
-			}
-		}
-
-		// Validate the field itself
-		errors = append(errors, v.validateValue(fieldName, value, parent)...)
-	}
-
-	return errors
-}
-
-func (v *Validator) Validate(data interface{}) error {
-	val := reflect.ValueOf(data)
+	val := reflect.ValueOf(value)
 	if val.Kind() == reflect.Ptr {
+		if val.IsNil() {
+			return fmt.Errorf("value is nil")
+		}
 		val = val.Elem()
 	}
 
 	if val.Kind() != reflect.Struct {
-		return &ValidationError{Field: "input", Message: "input must be a struct"}
+		return fmt.Errorf("value must be a struct or pointer to struct")
 	}
 
-	errors := v.validateStruct(val, "", data)
-	if len(errors) > 0 {
-		return ValidationErrors(errors)
+	return v.validateStruct(val)
+}
+
+func (v *Validator) validateStruct(val reflect.Value) error {
+	if val.Kind() == reflect.Ptr {
+		if val.IsNil() {
+			return nil
+		}
+		val = val.Elem()
+	}
+
+	if val.Kind() != reflect.Struct {
+		return nil
+	}
+
+	valType := val.Type()
+	var parent interface{}
+	if val.CanAddr() {
+		parent = val.Addr().Interface()
+	}
+
+	for i := 0; i < val.NumField(); i++ {
+		field := val.Field(i)
+		fieldType := valType.Field(i)
+
+		if !fieldType.IsExported() {
+			continue
+		}
+
+		tag := fieldType.Tag.Get("validate")
+		if tag == "" {
+			continue
+		}
+
+		// Handle nested struct validation
+		if field.Kind() == reflect.Ptr {
+			if field.IsNil() {
+				if err := v.validateField(field, tag, parent); err != nil {
+					return fmt.Errorf("%s: %v", fieldType.Name, err)
+				}
+				continue
+			}
+			field = field.Elem()
+		}
+
+		if field.Kind() == reflect.Struct {
+			if err := v.validateStruct(field); err != nil {
+				return fmt.Errorf("%s: %v", fieldType.Name, err)
+			}
+		}
+
+		if err := v.validateField(field, tag, parent); err != nil {
+			return fmt.Errorf("%s: %v", fieldType.Name, err)
+		}
 	}
 
 	return nil
 }
 
-type Required struct{}
-
-func (r Required) Validate(value interface{}) error {
-	v := reflect.ValueOf(value)
-	if v.Kind() == reflect.Ptr {
-		if v.IsNil() {
-			return fmt.Errorf("value is required")
-		}
-		v = v.Elem()
+func (v *Validator) validateField(field reflect.Value, tag string, parent interface{}) error {
+	if tag == "" {
+		return nil
 	}
 
-	switch v.Kind() {
-	case reflect.String:
-		if v.String() == "" {
-			return fmt.Errorf("value is required")
+	for _, rule := range strings.Split(tag, ",") {
+		parts := strings.Split(rule, "=")
+		ruleName := parts[0]
+		var ruleValue string
+		if len(parts) > 1 {
+			ruleValue = parts[1]
 		}
-	case reflect.Slice, reflect.Map:
-		if v.Len() == 0 {
-			return fmt.Errorf("value is required")
-		}
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		if v.Int() == 0 {
-			return fmt.Errorf("value is required")
-		}
-	case reflect.Float32, reflect.Float64:
-		if v.Float() == 0 {
-			return fmt.Errorf("value is required")
+
+		switch ruleName {
+		case "slice":
+			if err := v.validateSlice(field, rule); err != nil {
+				return err
+			}
+		case "min":
+			val, err := strconv.ParseFloat(ruleValue, 64)
+			if err != nil {
+				return fmt.Errorf("invalid min value: %s", ruleValue)
+			}
+			minRule := rules.Min{Value: val}
+			if err := minRule.Validate(field.Interface()); err != nil {
+				return err
+			}
+		default:
+			rule := v.rules[ruleName]
+			if rule == nil {
+				return fmt.Errorf("unknown validation rule: %s", ruleName)
+			}
+			if setter, ok := rule.(interface{ SetParent(interface{}) }); ok {
+				setter.SetParent(parent)
+			}
+			if err := rule.Validate(field.Interface()); err != nil {
+				return err
+			}
 		}
 	}
 
 	return nil
 }
 
-type StringLength struct {
-	Min int
-	Max int
-}
-
-func (s StringLength) Validate(value interface{}) error {
-	str, ok := value.(string)
-	if !ok {
-		return fmt.Errorf("value must be a string")
+func (v *Validator) validateSlice(field reflect.Value, tag string) error {
+	if tag == "" {
+		return nil
 	}
 
-	length := len(str)
-	if length < s.Min {
-		return fmt.Errorf("length must be at least %d", s.Min)
+	parts := strings.Split(tag, "=")
+	if len(parts) != 2 {
+		return fmt.Errorf("invalid slice validation format: %s", tag)
 	}
-	if length > s.Max {
-		return fmt.Errorf("length must be at most %d", s.Max)
+
+	rule := v.rules[parts[1]]
+	if rule == nil {
+		return fmt.Errorf("unknown validation rule: %s", parts[1])
+	}
+
+	if field.Kind() != reflect.Slice {
+		return fmt.Errorf("field is not a slice")
+	}
+
+	if field.IsNil() {
+		return fmt.Errorf("slice is nil")
+	}
+
+	for i := 0; i < field.Len(); i++ {
+		item := field.Index(i)
+		if item.Kind() == reflect.Ptr && !item.IsNil() {
+			item = item.Elem()
+		}
+
+		if item.Kind() == reflect.Struct {
+			if err := v.validateStruct(item); err != nil {
+				return fmt.Errorf("item at index %d: %v", i, err)
+			}
+		} else {
+			if err := rule.Validate(item.Interface()); err != nil {
+				return fmt.Errorf("item at index %d: %v", i, err)
+			}
+		}
 	}
 
 	return nil
+}
+
+func (v *Validator) ValidateAll(value interface{}) []error {
+	var errors []error
+
+	if value == nil {
+		return append(errors, fmt.Errorf("value is nil"))
+	}
+
+	val := reflect.ValueOf(value)
+	if val.Kind() == reflect.Ptr {
+		if val.IsNil() {
+			return append(errors, fmt.Errorf("value is nil"))
+		}
+		val = val.Elem()
+	}
+
+	if val.Kind() != reflect.Struct {
+		return append(errors, fmt.Errorf("value must be a struct or pointer to struct"))
+	}
+
+	typ := val.Type()
+	for i := 0; i < val.NumField(); i++ {
+		field := val.Field(i)
+		fieldType := typ.Field(i)
+
+		if !fieldType.IsExported() {
+			continue
+		}
+
+		tag := fieldType.Tag.Get("validate")
+		if tag == "" {
+			continue
+		}
+
+		if field.Kind() == reflect.Ptr {
+			if field.IsNil() {
+				for _, ruleName := range strings.Split(tag, ",") {
+					rule, ok := v.rules[ruleName]
+					if !ok {
+						errors = append(errors, fmt.Errorf("%s: unknown validation rule: %s", fieldType.Name, ruleName))
+						continue
+					}
+
+					if setter, ok := rule.(interface{ SetParent(interface{}) }); ok {
+						setter.SetParent(val.Addr().Interface())
+					}
+
+					if err := rule.Validate(nil); err != nil {
+						errors = append(errors, fmt.Errorf("%s: %v", fieldType.Name, err))
+					}
+				}
+				continue
+			}
+			field = field.Elem()
+		}
+
+		if field.Kind() == reflect.Struct {
+			if err := v.validateStruct(field); err != nil {
+				errors = append(errors, fmt.Errorf("%s: %v", fieldType.Name, err))
+			}
+			continue
+		}
+
+		if field.Kind() == reflect.Slice {
+			if err := v.validateSlice(field, tag); err != nil {
+				errors = append(errors, fmt.Errorf("%s: %v", fieldType.Name, err))
+			}
+			continue
+		}
+
+		if err := v.validateField(field, tag, val.Addr().Interface()); err != nil {
+			errors = append(errors, fmt.Errorf("%s: %v", fieldType.Name, err))
+		}
+	}
+
+	return errors
 }
 
 type Pattern struct {
-	Regex *regexp.Regexp
+	rules []rules.Rule
 }
 
-func NewPattern(pattern string) (*Pattern, error) {
-	regex, err := regexp.Compile(pattern)
-	if err != nil {
-		return nil, err
-	}
-	return &Pattern{Regex: regex}, nil
+func NewPattern(rules ...rules.Rule) *Pattern {
+	return &Pattern{rules: rules}
 }
 
-func (p Pattern) Validate(value interface{}) error {
-	str, ok := value.(string)
-	if !ok {
-		return fmt.Errorf("value must be a string")
+func (p *Pattern) Validate(value interface{}) error {
+	for _, rule := range p.rules {
+		if err := rule.Validate(value); err != nil {
+			return err
+		}
 	}
-
-	if !p.Regex.MatchString(str) {
-		return fmt.Errorf("value does not match pattern %s", p.Regex.String())
-	}
-
 	return nil
 }

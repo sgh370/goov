@@ -57,3 +57,35 @@ func (p Positive) Validate(value interface{}) error {
 	}
 	return nil
 }
+
+// Min is a validation rule that ensures a numeric value is greater than or equal to a minimum value
+type Min struct {
+	Value float64
+}
+
+// Validate implements Rule
+func (m Min) Validate(value interface{}) error {
+	if value == nil {
+		return nil
+	}
+
+	v := reflect.ValueOf(value)
+	switch v.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		if float64(v.Int()) < m.Value {
+			return fmt.Errorf("value must be greater than or equal to %v", m.Value)
+		}
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		if float64(v.Uint()) < m.Value {
+			return fmt.Errorf("value must be greater than or equal to %v", m.Value)
+		}
+	case reflect.Float32, reflect.Float64:
+		if v.Float() < m.Value {
+			return fmt.Errorf("value must be greater than or equal to %v", m.Value)
+		}
+	default:
+		return fmt.Errorf("value must be a number")
+	}
+
+	return nil
+}

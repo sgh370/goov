@@ -5,7 +5,7 @@ import (
 	"reflect"
 )
 
-type ValidationRule interface {
+type Rule interface {
 	Validate(value interface{}) error
 }
 
@@ -33,7 +33,7 @@ func (l Length) Validate(value interface{}) error {
 }
 
 type Each struct {
-	Rule ValidationRule
+	Rule Rule
 }
 
 func (e Each) Validate(value interface{}) error {
@@ -87,5 +87,108 @@ func (u Unique) Validate(value interface{}) error {
 		}
 		seen[item] = true
 	}
+	return nil
+}
+
+type Map struct {
+	Key   Rule
+	Value Rule
+}
+
+func (m Map) Validate(value interface{}) error {
+	if value == nil {
+		return fmt.Errorf("map is nil")
+	}
+
+	v := reflect.ValueOf(value)
+	if v.Kind() != reflect.Map {
+		return fmt.Errorf("value is not a map")
+	}
+
+	for _, key := range v.MapKeys() {
+		if m.Key != nil {
+			if err := m.Key.Validate(key.Interface()); err != nil {
+				return fmt.Errorf("invalid map key: %v", err)
+			}
+		}
+
+		if m.Value != nil {
+			if err := m.Value.Validate(v.MapIndex(key).Interface()); err != nil {
+				return fmt.Errorf("invalid map value for key %v: %v", key.Interface(), err)
+			}
+		}
+	}
+
+	return nil
+}
+
+type Slice struct {
+	Rule Rule
+}
+
+func (s Slice) Validate(value interface{}) error {
+	if value == nil {
+		return fmt.Errorf("slice is nil")
+	}
+
+	v := reflect.ValueOf(value)
+	if v.Kind() != reflect.Slice {
+		return fmt.Errorf("value is not a slice")
+	}
+
+	for i := 0; i < v.Len(); i++ {
+		item := v.Index(i)
+		if s.Rule != nil {
+			if err := s.Rule.Validate(item.Interface()); err != nil {
+				return fmt.Errorf("invalid item at index %d: %v", i, err)
+			}
+		}
+	}
+
+	return nil
+}
+
+type EachMulti struct {
+	Rules []Rule
+}
+
+func (e EachMulti) Validate(value interface{}) error {
+	v := reflect.ValueOf(value)
+	
+	if v.Kind() != reflect.Slice && v.Kind() != reflect.Array {
+		return fmt.Errorf("value must be a slice or array")
+	}
+
+	for i := 0; i < v.Len(); i++ {
+		item := v.Index(i).Interface()
+		for _, rule := range e.Rules {
+			if err := rule.Validate(item); err != nil {
+				return fmt.Errorf("item at index %d failed validation: %v", i, err)
+			}
+		}
+	}
+
+	return nil
+}
+
+type Keys struct {
+	Rules []Rule
+}
+
+func (k Keys) Validate(value interface{}) error {
+	v := reflect.ValueOf(value)
+	if v.Kind() != reflect.Map {
+		return fmt.Errorf("value must be a map")
+	}
+
+	keys := v.MapKeys()
+	for _, rule := range k.Rules {
+		for _, key := range keys {
+			if err := rule.Validate(key.Interface()); err != nil {
+				return fmt.Errorf("map key %v failed validation: %v", key.Interface(), err)
+			}
+		}
+	}
+
 	return nil
 }

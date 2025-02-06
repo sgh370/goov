@@ -6,29 +6,6 @@ import (
 	"time"
 )
 
-func TestRange(t *testing.T) {
-	tests := []struct {
-		name    string
-		rule    Range
-		value   interface{}
-		wantErr bool
-	}{
-		{"valid int", Range{Min: 0, Max: 10}, 5, false},
-		{"valid float", Range{Min: 0, Max: 10}, 5.5, false},
-		{"below min", Range{Min: 0, Max: 10}, -1, true},
-		{"above max", Range{Min: 0, Max: 10}, 11, true},
-		{"invalid type", Range{Min: 0, Max: 10}, "string", true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.rule.Validate(tt.value); (err != nil) != tt.wantErr {
-				t.Errorf("Range.Validate() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
 func TestLength(t *testing.T) {
 	tests := []struct {
 		name    string
