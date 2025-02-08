@@ -61,7 +61,7 @@
 				
 				<option value="file2">goov/validator/rules/common.go (100.0%)</option>
 				
-				<option value="file3">goov/validator/rules/conditional.go (67.1%)</option>
+				<option value="file3">goov/validator/rules/conditional.go (86.6%)</option>
 				
 				<option value="file4">goov/validator/rules/numeric.go (100.0%)</option>
 				
@@ -1044,12 +1044,12 @@ type When struct {
 func (w *When) SetParent(parent interface{}) <span class="cov8" title="1">{
         w.parent = parent
         if w.Then != nil </span><span class="cov8" title="1">{
-                if setter, ok := w.Then.(interface{ SetParent(interface{}) }); ok </span><span class="cov0" title="0">{
+                if setter, ok := w.Then.(interface{ SetParent(interface{}) }); ok </span><span class="cov8" title="1">{
                         setter.SetParent(parent)
                 }</span>
         }
         <span class="cov8" title="1">if w.Else != nil </span><span class="cov8" title="1">{
-                if setter, ok := w.Else.(interface{ SetParent(interface{}) }); ok </span><span class="cov0" title="0">{
+                if setter, ok := w.Else.(interface{ SetParent(interface{}) }); ok </span><span class="cov8" title="1">{
                         setter.SetParent(parent)
                 }</span>
         }
@@ -1088,7 +1088,7 @@ func (i *If) SetParent(parent interface{}) <span class="cov8" title="1">{
 }
 
 func (i If) Validate(value interface{}) error <span class="cov8" title="1">{
-        if i.parent == nil </span><span class="cov0" title="0">{
+        if i.parent == nil </span><span class="cov8" title="1">{
                 return fmt.Errorf("parent not set")
         }</span>
 
@@ -1097,7 +1097,7 @@ func (i If) Validate(value interface{}) error <span class="cov8" title="1">{
                 v = v.Elem()
         }</span>
 
-        <span class="cov8" title="1">if v.Kind() != reflect.Struct </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if v.Kind() != reflect.Struct </span><span class="cov8" title="1">{
                 return fmt.Errorf("parent must be a struct")
         }</span>
 
@@ -1106,7 +1106,7 @@ func (i If) Validate(value interface{}) error <span class="cov8" title="1">{
                 return fmt.Errorf("field %s not found", i.Field)
         }</span>
 
-        <span class="cov8" title="1">if field.Kind() != reflect.Bool </span><span class="cov8" title="1">{
+        <span class="cov8" title="1">if field.Kind() != reflect.Bool </span><span class="cov0" title="0">{
                 return fmt.Errorf("field %s is not a boolean", i.Field)
         }</span>
 
@@ -1201,31 +1201,31 @@ type DependentRequired struct {
         Parent interface{}
 }
 
-func (d DependentRequired) Validate(value interface{}) error <span class="cov0" title="0">{
-        if d.Parent == nil </span><span class="cov0" title="0">{
+func (d DependentRequired) Validate(value interface{}) error <span class="cov8" title="1">{
+        if d.Parent == nil </span><span class="cov8" title="1">{
                 return fmt.Errorf("parent struct not provided")
         }</span>
 
-        <span class="cov0" title="0">parentVal := reflect.ValueOf(d.Parent)
-        if parentVal.Kind() == reflect.Ptr </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">parentVal := reflect.ValueOf(d.Parent)
+        if parentVal.Kind() == reflect.Ptr </span><span class="cov8" title="1">{
                 parentVal = parentVal.Elem()
         }</span>
 
-        <span class="cov0" title="0">if parentVal.Kind() != reflect.Struct </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if parentVal.Kind() != reflect.Struct </span><span class="cov8" title="1">{
                 return fmt.Errorf("parent must be a struct")
         }</span>
 
-        <span class="cov0" title="0">field := parentVal.FieldByName(d.Field)
-        if !field.IsValid() </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">field := parentVal.FieldByName(d.Field)
+        if !field.IsValid() </span><span class="cov8" title="1">{
                 return fmt.Errorf("field %s not found", d.Field)
         }</span>
 
         // Check if the field is zero value
-        <span class="cov0" title="0">if field.IsZero() </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if field.IsZero() </span><span class="cov8" title="1">{
                 return fmt.Errorf("field %s is required", d.Field)
         }</span>
 
-        <span class="cov0" title="0">return nil</span>
+        <span class="cov8" title="1">return nil</span>
 }
 </pre>
 		

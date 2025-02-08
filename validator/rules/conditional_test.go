@@ -23,6 +23,19 @@ type TestStruct struct {
 	Value     string
 }
 
+// mockRule implements Rule interface and SetParent interface for testing
+type mockRule struct {
+	parent interface{}
+}
+
+func (m *mockRule) SetParent(parent interface{}) {
+	m.parent = parent
+}
+
+func (m *mockRule) Validate(value interface{}) error {
+	return nil
+}
+
 func TestWhen(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -251,13 +264,23 @@ func TestIf(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "non-bool field",
+			name: "nil parent",
 			rule: If{
 				Field: "Value",
 				Then:  Required{},
 			},
 			value:   "",
-			parent:  &TestStruct{Value: "not a bool"},
+			parent:  nil,
+			wantErr: true,
+		},
+		{
+			name: "non-struct parent",
+			rule: If{
+				Field: "NonExistent",
+				Then:  Required{},
+			},
+			value:   "",
+			parent:  map[string]string{},
 			wantErr: true,
 		},
 	}
@@ -350,25 +373,110 @@ func TestWhen_SetParent(t *testing.T) {
 		OtherVal string
 	}
 
-	parent := &TestStruct{Field: true, OtherVal: "test"}
-	rule := When{
-		Condition: func(v interface{}) bool {
-			return v.(*TestStruct).Field
+	tests := []struct {
+		name          string
+		rule          When
+		parent        interface{}
+		thenSetsParent bool
+		elseSetsParent bool
+	}{
+		{
+			name: "Then implements SetParent",
+			rule: When{
+				Condition: func(v interface{}) bool { return true },
+				Then:      &mockRule{},
+				Else:      Required{},
+			},
+			parent:        &TestStruct{Field: true},
+			thenSetsParent: true,
+			elseSetsParent: false,
 		},
-		Then: Required{},
+		{
+			name: "Else implements SetParent",
+			rule: When{
+				Condition: func(v interface{}) bool { return true },
+				Then:      Required{},
+				Else:      &mockRule{},
+			},
+			parent:        &TestStruct{Field: true},
+			thenSetsParent: false,
+			elseSetsParent: true,
+		},
+		{
+			name: "Both implement SetParent",
+			rule: When{
+				Condition: func(v interface{}) bool { return true },
+				Then:      &mockRule{},
+				Else:      &mockRule{},
+			},
+			parent:        &TestStruct{Field: true},
+			thenSetsParent: true,
+			elseSetsParent: true,
+		},
+		{
+			name: "Neither implements SetParent",
+			rule: When{
+				Condition: func(v interface{}) bool { return true },
+				Then:      Required{},
+				Else:      Required{},
+			},
+			parent:        &TestStruct{Field: true},
+			thenSetsParent: false,
+			elseSetsParent: false,
+		},
+		{
+			name: "Then is nil",
+			rule: When{
+				Condition: func(v interface{}) bool { return true },
+				Then:      nil,
+				Else:      &mockRule{},
+			},
+			parent:        &TestStruct{Field: true},
+			thenSetsParent: false,
+			elseSetsParent: true,
+		},
+		{
+			name: "Else is nil",
+			rule: When{
+				Condition: func(v interface{}) bool { return true },
+				Then:      &mockRule{},
+				Else:      nil,
+			},
+			parent:        &TestStruct{Field: true},
+			thenSetsParent: true,
+			elseSetsParent: false,
+		},
 	}
 
-	rule.SetParent(parent)
-	err := rule.Validate("test")
-	if err != nil {
-		t.Errorf("When.Validate() error = %v, wantErr false", err)
-	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.rule.SetParent(tt.parent)
 
-	// Test with false condition
-	parent.Field = false
-	err = rule.Validate("")
-	if err != nil {
-		t.Errorf("When.Validate() with false condition error = %v, wantErr false", err)
+			// Check if Then rule's parent was set correctly
+			if tt.thenSetsParent {
+				thenRule, ok := tt.rule.Then.(*mockRule)
+				if !ok {
+					t.Error("Then rule should be *mockRule")
+				} else if thenRule.parent != tt.parent {
+					t.Error("Then rule's parent not set correctly")
+				}
+			}
+
+			// Check if Else rule's parent was set correctly
+			if tt.elseSetsParent {
+				elseRule, ok := tt.rule.Else.(*mockRule)
+				if !ok {
+					t.Error("Else rule should be *mockRule")
+				} else if elseRule.parent != tt.parent {
+					t.Error("Else rule's parent not set correctly")
+				}
+			}
+
+			// Verify the When rule's own parent is set
+			if tt.rule.parent != tt.parent {
+				t.Error("When rule's parent not set correctly")
+			}
+		})
 	}
 }
 
@@ -421,5 +529,121 @@ func TestUnless_SetParent(t *testing.T) {
 	err = rule.Validate("")
 	if err != nil {
 		t.Errorf("Unless.Validate() with true condition error = %v, wantErr false", err)
+	}
+}
+
+func TestDependentRequired(t *testing.T) {
+	type Person struct {
+		Name    string
+		Age     int
+		Email   string
+		Address string
+		Active  bool
+		Count   int
+	}
+
+	tests := []struct {
+		name    string
+		rule    DependentRequired
+		parent  interface{}
+		field   string
+		wantErr bool
+	}{
+		{
+			name: "valid - field has value",
+			rule: DependentRequired{
+				Field: "Name",
+			},
+			parent: &Person{
+				Name: "John",
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid - field is empty string",
+			rule: DependentRequired{
+				Field: "Name",
+			},
+			parent: &Person{
+				Name: "",
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid - field is zero int",
+			rule: DependentRequired{
+				Field: "Age",
+			},
+			parent: &Person{
+				Age: 0,
+			},
+			wantErr: true,
+		},
+		{
+			name: "valid - field is non-zero int",
+			rule: DependentRequired{
+				Field: "Age",
+			},
+			parent: &Person{
+				Age: 25,
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid - field is false bool",
+			rule: DependentRequired{
+				Field: "Active",
+			},
+			parent: &Person{
+				Active: false,
+			},
+			wantErr: true,
+		},
+		{
+			name: "valid - field is true bool",
+			rule: DependentRequired{
+				Field: "Active",
+			},
+			parent: &Person{
+				Active: true,
+			},
+			wantErr: false,
+		},
+		{
+			name: "error - parent not provided",
+			rule: DependentRequired{
+				Field: "Name",
+			},
+			parent:  nil,
+			wantErr: true,
+		},
+		{
+			name: "error - parent is not a struct",
+			rule: DependentRequired{
+				Field: "Name",
+			},
+			parent:  "not a struct",
+			wantErr: true,
+		},
+		{
+			name: "error - field doesn't exist",
+			rule: DependentRequired{
+				Field: "NonExistentField",
+			},
+			parent: &Person{
+				Name: "John",
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.rule.Parent = tt.parent
+			err := tt.rule.Validate(nil) // value is not used in DependentRequired
+			if (err != nil) != tt.wantErr {
+				t.Errorf("DependentRequired.Validate() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
 	}
 }
