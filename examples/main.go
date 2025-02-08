@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/sgh370/goov/validator"
+	"github.com/sgh370/goov/validator/rules"
 )
 
 // User represents a sample user registration form
@@ -20,6 +21,24 @@ type User struct {
 }
 
 func main() {
+	// Create a new validator instance
+	v := validator.New()
+
+	// Add validation rules
+	v.AddRule("required", rules.Required{})
+	v.AddRule("min", &rules.Min{Value: 3}) // For string length and numeric values
+	v.AddRule("max", &rules.Range{Max: 20})
+	v.AddRule("email", &rules.EmailDNS{})
+	v.AddRule("url", &rules.URL{})
+	v.AddRule("ip", &rules.IP{})
+	v.AddRule("oneof", &rules.OneOf{Values: []interface{}{"email", "phone"}})
+	
+	// Add conditional rules
+	v.AddRule("required_if", &rules.If{
+		Field: "ContactMethod",
+		Then: rules.Required{},
+	})
+
 	// Example 1: Valid user
 	validUser := User{
 		Username:      "johndoe",
@@ -31,7 +50,7 @@ func main() {
 		Interests:    []string{"coding", "reading"},
 	}
 
-	if err := validator.ValidateStruct(validUser); err != nil {
+	if err := v.Validate(validUser); err != nil {
 		fmt.Printf("Validation failed: %v\n", err)
 	} else {
 		fmt.Println("Valid user registration")
@@ -49,7 +68,7 @@ func main() {
 		Interests:    []string{}, // empty slice
 	}
 
-	if err := validator.ValidateStruct(invalidUser); err != nil {
+	if err := v.Validate(invalidUser); err != nil {
 		fmt.Println("\nExpected validation errors:")
 		fmt.Printf("%v\n", err)
 	}
@@ -68,7 +87,7 @@ func main() {
 		Interests:    []string{"technology", "innovation"},
 	}
 
-	if err := validator.ValidateStruct(companyUser); err != nil {
+	if err := v.Validate(companyUser); err != nil {
 		fmt.Printf("Validation failed: %v\n", err)
 	} else {
 		fmt.Println("\nValid company registration")
