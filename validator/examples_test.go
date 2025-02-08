@@ -3,7 +3,7 @@ package validator
 import (
 	"fmt"
 
-	"goov/validator/rules"
+	"github.com/sgh370/goov/validator/rules"
 )
 
 func Example_basicValidation() {

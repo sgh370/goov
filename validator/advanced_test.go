@@ -3,7 +3,7 @@ package validator
 import (
 	"testing"
 
-	"goov/validator/rules"
+	"github.com/sgh370/goov/validator/rules"
 )
 
 type Address struct {

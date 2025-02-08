@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"goov/validator/rules"
+	"github.com/sgh370/goov/validator/rules"
 )
 
 type Validator struct {
