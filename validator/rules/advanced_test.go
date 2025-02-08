@@ -133,6 +133,24 @@ func TestDomain(t *testing.T) {
 			value: 123,
 			wantErr: true,
 		},
+		{
+			name: "invalid length",
+			rule: Domain{AllowSubdomains: true},
+			value: strings.Repeat("a", 265) + ".com",
+			wantErr: true,
+		},
+		{
+			name: "invalid format",
+			rule: Domain{AllowSubdomains: true},
+			value: ".",
+			wantErr: true,
+		},
+		{
+			name: "invalid format2",
+			rule: Domain{AllowSubdomains: true},
+			value: "#.s",
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {

@@ -57,6 +57,12 @@ func TestEmailDNS(t *testing.T) {
 			value:   123,
 			wantErr: true,
 		},
+		{
+			name:    "invalid email - invalid lookup",
+			rule:    EmailDNS{CheckDNS: true},
+			value:   "test@asdasd.com",
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -308,6 +314,102 @@ func TestSemVer(t *testing.T) {
 			rule:    SemVer{},
 			value:   123,
 			wantErr: true,
+		},
+		{
+			name: "Invalid prerelease with trailing dot",
+			rule: SemVer{
+				AllowPrefix:     false,
+				RequirePrefix:   false,
+				AllowPrerelease: true,
+				AllowBuild:      false,
+				AllowEmpty:      false,
+			},
+			value:   "1.0.0-alpha.",
+			wantErr: true,
+		},
+		{
+			name: "Valid version with build metadata",
+			rule: SemVer{
+				AllowPrefix:     false,
+				RequirePrefix:   false,
+				AllowPrerelease: false,
+				AllowBuild:      true, // Build metadata allowed
+				AllowEmpty:      false,
+			},
+			value:   "1.0.0+build.123",
+			wantErr: false,
+		},
+		{
+			name: "Invalid build metadata with trailing dot",
+			rule: SemVer{
+				AllowPrefix:     false,
+				RequirePrefix:   false,
+				AllowPrerelease: false,
+				AllowBuild:      true, // Build metadata allowed
+				AllowEmpty:      false,
+			},
+			value:   "1.0.0+build.",
+			wantErr: true,
+		},
+		{
+			name: "Invalid build metadata with leading dot",
+			rule: SemVer{
+				AllowPrefix:     false,
+				RequirePrefix:   false,
+				AllowPrerelease: false,
+				AllowBuild:      true, // Build metadata allowed
+				AllowEmpty:      false,
+			},
+			value:   "1.0.0+.build",
+			wantErr: true,
+		},
+		{
+			name: "Invalid build metadata with special characters",
+			rule: SemVer{
+				AllowPrefix:     false,
+				RequirePrefix:   false,
+				AllowPrerelease: false,
+				AllowBuild:      true, // Build metadata allowed
+				AllowEmpty:      false,
+			},
+			value:   "1.0.0+build@123",
+			wantErr: true,
+		},
+		{
+			name: "Empty build metadata part",
+			rule: SemVer{
+				AllowPrefix:     false,
+				RequirePrefix:   false,
+				AllowPrerelease: false,
+				AllowBuild:      true, // Build metadata allowed
+				AllowEmpty:      false,
+			},
+			value:   "1.0.0+",
+			wantErr: true,
+		},
+		{
+			name: "Build metadata not allowed",
+			rule: SemVer{
+				AllowPrefix:     false,
+				RequirePrefix:   false,
+				AllowPrerelease: false,
+				AllowBuild:      false, // Build metadata not allowed
+				AllowEmpty:      false,
+			},
+			value:   "1.0.0+build",
+			wantErr: true,
+		},
+		{
+			name: "Valid version without build metadata",
+			rule: SemVer{
+				AllowPrefix:     false,
+				RequirePrefix:   false,
+				AllowPrerelease: false,
+				AllowBuild:      false,
+				AllowEmpty:      false,
+			},
+			value:   "1.0.0",
+			wantErr: false,
 		},
 	}
 

@@ -381,10 +381,6 @@ func (e EmailDNS) Validate(value interface{}) error {
 
 	if e.CheckDNS {
 		parts := strings.Split(str, "@")
-		if len(parts) != 2 {
-			return fmt.Errorf("invalid email format")
-		}
-
 		_, err := net.LookupMX(parts[1])
 		if err != nil {
 			return fmt.Errorf("domain does not have valid MX records")

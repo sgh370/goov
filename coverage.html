@@ -55,7 +55,7 @@
 			<div id="nav">
 				<select id="files">
 				
-				<option value="file0">goov/validator/rules/advanced.go (95.2%)</option>
+				<option value="file0">goov/validator/rules/advanced.go (100.0%)</option>
 				
 				<option value="file1">goov/validator/rules/collection.go (100.0%)</option>
 				
@@ -63,7 +63,7 @@
 				
 				<option value="file3">goov/validator/rules/conditional.go (67.1%)</option>
 				
-				<option value="file4">goov/validator/rules/numeric.go (91.2%)</option>
+				<option value="file4">goov/validator/rules/numeric.go (100.0%)</option>
 				
 				<option value="file5">goov/validator/validator.go (75.9%)</option>
 				
@@ -156,7 +156,7 @@ func (d Domain) Validate(value interface{}) error <span class="cov8" title="1">{
         // 4. Labels cannot start or end with hyphens
         // 5. TLD cannot be all numeric
 
-        <span class="cov8" title="1">if len(str) &gt; 253 </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if len(str) &gt; 253 </span><span class="cov8" title="1">{
                 return fmt.Errorf("domain name too long")
         }</span>
 
@@ -170,13 +170,13 @@ func (d Domain) Validate(value interface{}) error <span class="cov8" title="1">{
         }</span>
 
         <span class="cov8" title="1">for i, label := range labels </span><span class="cov8" title="1">{
-                if len(label) == 0 </span><span class="cov0" title="0">{
+                if len(label) == 0 </span><span class="cov8" title="1">{
                         return fmt.Errorf("invalid domain name format")
                 }</span>
                 <span class="cov8" title="1">if len(label) &gt; 63 </span><span class="cov8" title="1">{
                         return fmt.Errorf("domain name too long")
                 }</span>
-                <span class="cov8" title="1">if !regexp.MustCompile(`^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$`).MatchString(label) </span><span class="cov0" title="0">{
+                <span class="cov8" title="1">if !regexp.MustCompile(`^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$`).MatchString(label) </span><span class="cov8" title="1">{
                         return fmt.Errorf("invalid domain name format")
                 }</span>
                 <span class="cov8" title="1">if i == len(labels)-1 &amp;&amp; regexp.MustCompile(`^[0-9]+$`).MatchString(label) </span><span class="cov8" title="1">{
@@ -460,14 +460,10 @@ func (e EmailDNS) Validate(value interface{}) error <span class="cov8" title="1"
                 return fmt.Errorf("invalid email format")
         }</span>
 
-        <span class="cov8" title="1">if e.CheckDNS </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if e.CheckDNS </span><span class="cov8" title="1">{
                 parts := strings.Split(str, "@")
-                if len(parts) != 2 </span><span class="cov0" title="0">{
-                        return fmt.Errorf("invalid email format")
-                }</span>
-
-                <span class="cov0" title="0">_, err := net.LookupMX(parts[1])
-                if err != nil </span><span class="cov0" title="0">{
+                _, err := net.LookupMX(parts[1])
+                if err != nil </span><span class="cov8" title="1">{
                         return fmt.Errorf("domain does not have valid MX records")
                 }</span>
         }
@@ -622,7 +618,7 @@ func (s SemVer) Validate(value interface{}) error <span class="cov8" title="1">{
                 if !s.AllowPrerelease </span><span class="cov8" title="1">{
                         return fmt.Errorf("prerelease versions not allowed")
                 }</span>
-                <span class="cov8" title="1">if !regexp.MustCompile(`^[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*$`).MatchString(versionParts[1]) </span><span class="cov0" title="0">{
+                <span class="cov8" title="1">if !regexp.MustCompile(`^[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*$`).MatchString(versionParts[1]) </span><span class="cov8" title="1">{
                         return fmt.Errorf("invalid prerelease format")
                 }</span>
         }
@@ -632,7 +628,7 @@ func (s SemVer) Validate(value interface{}) error <span class="cov8" title="1">{
                 if !s.AllowBuild </span><span class="cov8" title="1">{
                         return fmt.Errorf("build metadata not allowed")
                 }</span>
-                <span class="cov8" title="1">if !regexp.MustCompile(`^[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*$`).MatchString(parts[1]) </span><span class="cov0" title="0">{
+                <span class="cov8" title="1">if !regexp.MustCompile(`^[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*$`).MatchString(parts[1]) </span><span class="cov8" title="1">{
                         return fmt.Errorf("invalid build metadata format")
                 }</span>
         }
@@ -1252,7 +1248,7 @@ func (r Range) Validate(value interface{}) error <span class="cov8" title="1">{
         switch v.Kind() </span>{
         case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:<span class="cov8" title="1">
                 num = float64(v.Int())</span>
-        case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:<span class="cov0" title="0">
+        case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:<span class="cov8" title="1">
                 num = float64(v.Uint())</span>
         case reflect.Float32, reflect.Float64:<span class="cov8" title="1">
                 num = v.Float()</span>
@@ -1279,8 +1275,8 @@ func (p Positive) Validate(value interface{}) error <span class="cov8" title="1"
                 if v.Int() &lt;= 0 </span><span class="cov8" title="1">{
                         return fmt.Errorf("value must be positive")
                 }</span>
-        case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:<span class="cov0" title="0">
-                if v.Uint() == 0 </span><span class="cov0" title="0">{
+        case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:<span class="cov8" title="1">
+                if v.Uint() == 0 </span><span class="cov8" title="1">{
                         return fmt.Errorf("value must be positive")
                 }</span>
         case reflect.Float32, reflect.Float64:<span class="cov8" title="1">

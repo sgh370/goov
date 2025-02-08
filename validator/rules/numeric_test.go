@@ -45,6 +45,11 @@ func TestPositive(t *testing.T) {
 			value:   "42",
 			wantErr: true,
 		},
+		{
+			name:    "uint negative",
+			value:   uint(0),
+			wantErr: true,
+		},
 	}
 
 	rule := Positive{}
@@ -111,6 +116,12 @@ func TestRange(t *testing.T) {
 			name:    "zero max value",
 			rule:    Range{Min: 1, Max: 0},
 			value:   42,
+			wantErr: false,
+		},
+		{
+			name:    "uint",
+			rule:    Range{Min: 1, Max: 0},
+			value:   uint(42),
 			wantErr: false,
 		},
 	}
