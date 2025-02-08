@@ -61,7 +61,7 @@
 				
 				<option value="file2">goov/validator/rules/common.go (100.0%)</option>
 				
-				<option value="file3">goov/validator/rules/conditional.go (59.8%)</option>
+				<option value="file3">goov/validator/rules/conditional.go (67.1%)</option>
 				
 				<option value="file4">goov/validator/rules/numeric.go (91.2%)</option>
 				
@@ -1184,20 +1184,20 @@ type CrossField struct {
         parent     interface{}
 }
 
-func (c *CrossField) SetParent(parent interface{}) <span class="cov0" title="0">{
+func (c *CrossField) SetParent(parent interface{}) <span class="cov8" title="1">{
         c.parent = parent
 }</span>
 
-func (c CrossField) Validate(value interface{}) error <span class="cov0" title="0">{
-        if c.ValidateFn == nil </span><span class="cov0" title="0">{
+func (c CrossField) Validate(value interface{}) error <span class="cov8" title="1">{
+        if c.ValidateFn == nil </span><span class="cov8" title="1">{
                 return fmt.Errorf("validation function not provided")
         }</span>
 
-        <span class="cov0" title="0">if c.parent == nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if c.parent == nil </span><span class="cov8" title="1">{
                 return fmt.Errorf("parent not set")
         }</span>
 
-        <span class="cov0" title="0">return c.ValidateFn(c.parent, value)</span>
+        <span class="cov8" title="1">return c.ValidateFn(c.parent, value)</span>
 }
 
 type DependentRequired struct {

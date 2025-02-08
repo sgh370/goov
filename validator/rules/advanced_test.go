@@ -3,6 +3,7 @@ package rules
 import (
 	"testing"
 	"strings"
+	"fmt"
 )
 
 func TestIP(t *testing.T) {
@@ -279,5 +280,46 @@ func TestCreditCard(t *testing.T) {
 				t.Errorf("CreditCard.Validate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
+	}
+}
+
+func TestCrossField_SetParent(t *testing.T) {
+	parent := struct{}{}
+	cf := CrossField{ValidateFn: func(_, _ interface{}) error { return nil }}
+	cf.SetParent(parent)
+	if cf.parent != parent {
+		t.Error("Expected parent to be set")
+	}
+}
+
+func TestCrossField_Validate_NoValidationFn(t *testing.T) {
+	cf := CrossField{}
+	err := cf.Validate(nil)
+	if err == nil || err.Error() != "validation function not provided" {
+		t.Errorf("Unexpected error: %v", err)
+	}
+}
+
+func TestCrossField_Validate_NoParent(t *testing.T) {
+	cf := CrossField{ValidateFn: func(_, _ interface{}) error { return nil }}
+	err := cf.Validate(nil)
+	if err == nil || err.Error() != "parent not set" {
+		t.Errorf("Unexpected error: %v", err)
+	}
+}
+
+func TestCrossField_Validate_Success(t *testing.T) {
+	parent := struct{ Value int }{42}
+	cf := CrossField{
+		ValidateFn: func(p, v interface{}) error {
+			if p.(struct{ Value int }).Value != 42 {
+				return fmt.Errorf("invalid parent value")
+			}
+			return nil
+		},
+	}
+	cf.SetParent(parent)
+	if err := cf.Validate(nil); err != nil {
+		t.Errorf("Unexpected validation error: %v", err)
 	}
 }
