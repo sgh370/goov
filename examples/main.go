@@ -2,22 +2,23 @@ package main
 
 import (
 	"fmt"
+
 	"github.com/sgh370/goov/validator"
 	"github.com/sgh370/goov/validator/rules"
 )
 
 // User represents a sample user registration form
 type User struct {
-	Username     string   `validate:"required,min=3,max=20"`
-	Email        string   `validate:"required,email"`
-	Password     string   `validate:"required,min=8"`
-	Age          int      `validate:"required,min=18"`
-	PhoneNumber  string   `validate:"required_if=ContactMethod phone"`
-	ContactMethod string  `validate:"required,oneof=email phone"`
-	Website      string   `validate:"url,required_if=IsCompany true"`
-	IsCompany    bool
-	IPAddress    string   `validate:"ip"`
-	Interests    []string `validate:"required,min=1,dive,required"`
+	Username      string `validate:"required,length:3:20"`
+	Email         string `validate:"required,email"`
+	Password      string `validate:"required,length:8:100"`
+	Age           int    `validate:"required,min=18"`
+	PhoneNumber   string `validate:"required_if=ContactMethod phone"`
+	ContactMethod string `validate:"required,oneof=email phone"`
+	Website       string `validate:"url,required_if=IsCompany true"`
+	IsCompany     bool
+	IPAddress     string   `validate:"ip"`
+	Interests     []string `validate:"required,min=1,dive,required"`
 }
 
 func main() {
@@ -26,17 +27,19 @@ func main() {
 
 	// Add validation rules
 	v.AddRule("required", rules.Required{})
-	v.AddRule("min", &rules.Min{Value: 3}) // For string length and numeric values
-	v.AddRule("max", &rules.Range{Max: 20})
+	v.AddRule("length:3:20", &rules.Length{Min: 3, Max: 20})
+	v.AddRule("length:8:100", &rules.Length{Min: 8, Max: 100})
+	v.AddRule("min=18", &rules.Min{Value: 18})
+	v.AddRule("phone", &rules.Phone{})
 	v.AddRule("email", &rules.EmailDNS{})
 	v.AddRule("url", &rules.URL{})
 	v.AddRule("ip", &rules.IP{})
 	v.AddRule("oneof", &rules.OneOf{Values: []interface{}{"email", "phone"}})
-	
+
 	// Add conditional rules
 	v.AddRule("required_if", &rules.If{
 		Field: "ContactMethod",
-		Then: rules.Required{},
+		Then:  rules.Required{},
 	})
 
 	// Example 1: Valid user
@@ -44,10 +47,10 @@ func main() {
 		Username:      "johndoe",
 		Email:         "john@example.com",
 		Password:      "securepass123",
-		Age:          25,
+		Age:           25,
 		ContactMethod: "email",
-		IsCompany:    false,
-		Interests:    []string{"coding", "reading"},
+		IsCompany:     false,
+		Interests:     []string{"coding", "reading"},
 	}
 
 	if err := v.Validate(validUser); err != nil {
@@ -58,14 +61,14 @@ func main() {
 
 	// Example 2: Invalid user (missing required fields and validation failures)
 	invalidUser := User{
-		Username:     "jo", // too short
-		Email:        "invalid-email", // invalid email format
-		Password:     "short", // too short
-		Age:         16, // under minimum age
-		ContactMethod: "phone", // requires phone number
-		Website:      "not-a-url", // invalid URL format
-		IPAddress:    "256.256.256.256", // invalid IP
-		Interests:    []string{}, // empty slice
+		Username:      "jo",              // too short
+		Email:         "invalid-email",   // invalid email format
+		Password:      "short",           // too short
+		Age:           16,                // under minimum age
+		ContactMethod: "phone",           // requires phone number
+		Website:       "not-a-url",       // invalid URL format
+		IPAddress:     "256.256.256.256", // invalid IP
+		Interests:     []string{},        // empty slice
 	}
 
 	if err := v.Validate(invalidUser); err != nil {
@@ -75,16 +78,16 @@ func main() {
 
 	// Example 3: Company user with conditional validations
 	companyUser := User{
-		Username:     "techcorp",
-		Email:        "contact@techcorp.com",
-		Password:     "company123secure",
-		Age:         30,
+		Username:      "techcorp",
+		Email:         "contact@techcorp.com",
+		Password:      "company123secure",
+		Age:           30,
 		ContactMethod: "phone",
-		PhoneNumber:  "+1234567890",
-		IsCompany:    true,
-		Website:      "https://techcorp.com",
-		IPAddress:    "192.168.1.1",
-		Interests:    []string{"technology", "innovation"},
+		PhoneNumber:   "+1234567890",
+		IsCompany:     true,
+		Website:       "https://techcorp.com",
+		IPAddress:     "192.168.1.1",
+		Interests:     []string{"technology", "innovation"},
 	}
 
 	if err := v.Validate(companyUser); err != nil {
