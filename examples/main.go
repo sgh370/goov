@@ -29,7 +29,6 @@ func main() {
 	v.AddRule("required", rules.Required{})
 	v.AddRule("length:3:20", &rules.Length{Min: 3, Max: 20})
 	v.AddRule("length:8:100", &rules.Length{Min: 8, Max: 100})
-	v.AddRule("min=18", &rules.Min{Value: 18})
 	v.AddRule("phone", &rules.Phone{})
 	v.AddRule("email", &rules.EmailDNS{})
 	v.AddRule("url", &rules.URL{})
@@ -47,7 +46,7 @@ func main() {
 		Username:      "johndoe",
 		Email:         "john@example.com",
 		Password:      "securepass123",
-		Age:           25,
+		Age:           12,
 		ContactMethod: "email",
 		IsCompany:     false,
 		Interests:     []string{"coding", "reading"},

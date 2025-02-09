@@ -102,6 +102,163 @@ func main() {
 - `domain` - Validates domain names
 - `port` - Validates port numbers
 
+## Pre-registered Validation Tags
+
+GOOV comes with several pre-registered validation rules that are ready to use without calling `AddRule`. These are common validation rules that are automatically registered when you create a new validator instance using `validator.New()`.
+
+### Basic Pre-registered Rules
+
+```go
+v := validator.New() // These rules are automatically registered
+
+type User struct {
+    // All these tags work without explicit AddRule calls
+    ID          int     `validate:"required"`
+    Email       string  `validate:"email"`
+    URL         string  `validate:"url"`
+    IP          string  `validate:"ip"`
+    UUID        string  `validate:"uuid"`
+    JSON        string  `validate:"json"`
+    Phone       string  `validate:"phone"`
+}
+```
+
+### Pre-registered Rules List
+
+1. **Data Presence**
+   - `required` - Field must not be empty
+
+2. **String Formats**
+   - `email` - Validates email format
+   - `url` - Validates URL format
+   - `ip` - Validates IPv4 or IPv6 address
+   - `uuid` - Validates UUID format
+   - `json` - Validates JSON string format
+   - `phone` - Validates phone number format
+
+3. **Numeric Validations**
+   - `positive` - Number must be positive
+   - `negative` - Number must be negative
+   - `min` - Minimum value check
+   - `max` - Maximum value check
+
+4. **Collection Validations**
+   - `unique` - All elements must be unique
+   - `min` - Minimum number of elements
+   - `max` - Maximum number of elements
+   - `dive` - Validates elements of a slice/array
+
+### Using Pre-registered Rules with Parameters
+
+Some pre-registered rules accept parameters. Here's how to use them:
+
+```go
+type Product struct {
+    // Numeric parameters
+    Age         int     `validate:"min=18"`
+    Score       float64 `validate:"range=0:100"`
+    
+    // String length
+    Name        string  `validate:"length=10"`      // Exact length
+    Description string  `validate:"length:5:100"`   // Min:Max length
+    
+    // Collection size
+    Tags        []string `validate:"min=1,max=5"`   // Between 1 and 5 elements
+}
+```
+
+### Combining Pre-registered Rules
+
+You can combine multiple pre-registered rules in a single tag:
+
+```go
+type User struct {
+    Email    string   `validate:"required,email"`           // Must be present and valid email
+    Tags     []string `validate:"required,min=1,unique"`    // Required, non-empty, unique elements
+    Age      int      `validate:"required,min=0,max=150"`   // Required, between 0 and 150
+}
+```
+
+### Important Notes
+
+1. Pre-registered rules are designed for common validation scenarios
+2. They are optimized for performance and memory usage
+3. You can override pre-registered rules by calling `AddRule` with the same name
+4. Custom validation rules still need to be registered using `AddRule`
+
+## Understanding AddRule and Tags
+
+### The Relationship Between AddRule and Tags
+
+The validation system in GOOV works through two complementary components:
+
+1. **AddRule**: Registers validation rules with the validator instance
+2. **Tags**: Applies those registered rules to struct fields
+
+Before a tag can be used in a struct, its corresponding rule must be registered using `AddRule`. Here's how it works:
+
+```go
+// 1. First, register the rule
+v.AddRule("length:3:20", &rules.Length{Min: 3, Max: 20})
+
+// 2. Then use it in struct tags
+type User struct {
+    Username string `validate:"length:3:20"`
+}
+```
+
+### When to Use AddRule
+
+You need to use `AddRule` in these scenarios:
+- When initializing your validator instance
+- When defining parameterized rules (e.g., `length:3:20`, `min=18`)
+- When adding custom validation rules
+- When setting up conditional validations
+
+Example of registering different types of rules:
+```go
+v := validator.New()
+
+// Simple rules
+v.AddRule("required", rules.Required{})
+
+// Parameterized rules
+v.AddRule("length:3:20", &rules.Length{Min: 3, Max: 20})
+v.AddRule("min=18", &rules.Min{Value: 18})
+
+// Conditional rules
+v.AddRule("required_if", &rules.If{
+    Field: "ContactMethod",
+    Then:  rules.Required{},
+})
+```
+
+### When to Use Tags
+
+Tags are used in your struct definitions to:
+- Apply registered validation rules to specific fields
+- Combine multiple validation rules
+- Define the validation flow for your data model
+
+Example of using tags:
+```go
+type User struct {
+    // Single rule
+    IsActive  bool    `validate:"required"`
+    
+    // Multiple rules
+    Username  string  `validate:"required,length:3:20"`
+    
+    // Conditional validation
+    Phone     string  `validate:"required_if=ContactType phone"`
+    
+    // Nested validation
+    Addresses []Address `validate:"required,dive"`
+}
+```
+
+Remember: Any validation rule used in a tag must first be registered using `AddRule`. If you use a tag that hasn't been registered, the validator will return an error.
+
 ## Custom Validation Rules
 
 You can create custom validation rules by implementing the `Rule` interface:
