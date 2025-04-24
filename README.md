@@ -2,6 +2,10 @@
 
 GOOV is a powerful, flexible, and easy-to-use validation library for Go that provides struct-level validation through tags. It offers a wide range of built-in validation rules and supports custom validation logic.
 
+## Author
+
+**Saeed Ghanbari** - [GitHub](https://github.com/sgh370)
+
 ## Features
 
 - Tag-based validation
